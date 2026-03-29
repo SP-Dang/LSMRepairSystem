@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>LSM RECEPTION - TUK TUK CHECK-IN</title><style>body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;margin:0;padding:20px} .card{max-width:600px;margin:0 auto;background:#fff;padding:30px;border-radius:15px;box-shadow:0 8px 30px rgba(0,0,0,0.1)} h2{color:#1a1a1a;margin-top:0;border-bottom:3px solid #ff4500;padding-bottom:10px;display:flex;justify-content:space-between} .section-label{font-size:12px;font-weight:900;color:#ff4500;margin:20px 0 10px;text-transform:uppercase;letter-spacing:1px} .grid{display:grid;grid-template-columns:1fr 1fr;gap:15px} .form-group{margin-bottom:12px} label{display:block;margin-bottom:5px;font-weight:bold;font-size:13px;color:#444} input,select,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;box-sizing:border-box;font-size:14px} .check-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#f9f9f9;padding:15px;border-radius:10px} .check-item{display:flex;align-items:center;font-size:13px;cursor:pointer} .check-item input{width:auto;margin-right:10px} .core-selection{display:flex;gap:10px;margin-bottom:20px} .core-btn{flex:1;padding:12px;border:2px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;text-align:center;font-size:12px;font-weight:bold;transition:0.3s} .core-btn.active{background:#ff4500;color:#fff;border-color:#ff4500} button#submit{width:100%;padding:18px;background:#1a1a1a;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:20px;transition:0.2s} button#submit:hover{background:#333} .success-msg{display:none;background:#d4edda;color:#155724;padding:15px;border-radius:8px;text-align:center;margin-top:15px;font-weight:bold}</style></head><body>
+
+<div class="card">
+    <h2><span>🆕 Tuk Tuk Check-In</span> <span style="font-size:14px;color:#888">Step 1/2</span></h2>
+    
+    <div class="section-label">Vehicle & Owner Info</div>
+    <div class="grid">
+        <div class="form-group"><label>Plate Number</label><input type="text" id="plate" placeholder="e.g. 1234 VT"></div>
+        <div class="form-group"><label>Vehicle Model</label><input type="text" id="model" placeholder="e.g. Cargo-X1"></div>
+    </div>
+    <div class="grid">
+        <div class="form-group"><label>VIN Number</label><input type="text" id="vin" placeholder="Chassis No."></div>
+        <div class="form-group"><label>Owner Name</label><input type="text" id="owner" placeholder="Full Name"></div>
+    </div>
+    <div class="form-group"><label>Owner Phone</label><input type="text" id="phone" placeholder="020..."></div>
+
+    <div class="section-label">6-Point Symptom Checklist</div>
+    <div class="check-grid">
+        <label class="check-item"><input type="checkbox" class="symptom" value="Suspension"> 1. Front Suspension</label>
+        <label class="check-item"><input type="checkbox" class="symptom" value="Brakes"> 2. Braking System</label>
+        <label class="check-item"><input type="checkbox" class="symptom" value="Wheels"> 3. Wheels/Tires</label>
+        <label class="check-item"><input type="checkbox" class="symptom" value="PowerTrain"> 4. Power Train</label>
+        <label class="check-item"><input type="checkbox" class="symptom" value="Electrical"> 5. Lights & Switches</label>
+        <label class="check-item"><input type="checkbox" class="symptom" value="Battery"> 6. Battery (12V/HV)</label>
+    </div>
+
+    <div class="section-label">Repair Core Assignment</div>
+    <div class="core-selection">
+        <div class="core-btn" onclick="setCore(1, this)">CORE 1: IN/OUT</div>
+        <div class="core-btn active" onclick="setCore(2, this)">CORE 2: MINOR</div>
+        <div class="core-btn" onclick="setCore(3, this)">CORE 3: GMS</div>
+    </div>
+
+    <button id="submit" onclick="submitJob()">CREATE JOB CARD</button>
+    <div id="msg" class="success-msg">✅ Job Card #<span id="jobNo"></span> Created!</div>
+</div>
+
+<script>
+    const u = "https://bdcwfgutqnfhacanswlk.supabase.co";
+    const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkY3dmZ3V0cW5maGFjYW5zd2xrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTg0NzMsImV4cCI6MjA5MDI3NDQ3M30.qHTe6H5ca5PQ9RahiIdrGc4eOMMJrZrSsACAl5mJm4A";
+    const _s = supabase.createClient(u, k);
+
+    let selectedCore = 2;
+
+    function setCore(val, el) {
+        selectedCore = val;
+        document.querySelectorAll('.core-btn').forEach(b => b.classList.remove('active'));
+        el.classList.add('active');
+    }
+
+    async function submitJob() {
+        const plate = document.getElementById('plate').value;
+        const model = document.getElementById('model').value;
+        const vin = document.getElementById('vin').value;
+        const owner = document.getElementById('owner').value;
+        const phone = document.getElementById('phone').value;
+        
+        const symptoms = Array.from(document.querySelectorAll('.symptom:checked')).map(cb => cb.value).join(', ');
+
+        if(!plate) return alert("Plate Number is required!");
+
+        // 1. Update Vehicle Master List
+        await _s.from('vehicles').upsert({ 
+            plate_no: plate, 
+            owner_name: owner, 
+            owner_phone: phone, 
+            model_type: model, 
+            vin_no: vin 
+        });
+
+        // 2. Create Job Card
+        const { data, error } = await _s.from('job_cards').insert([{
+            vehicle_plate: plate,
+            core_type: selectedCore,
+            symptoms: symptoms || "General Checkup",
+            current_status: 'QUEUED'
+        }]).select();
+
+        if (error) {
+            alert("Error: " + error.message);
+        } else {
+            document.getElementById('jobNo').innerText = data[0].id;
+            document.getElementById('msg').style.display = 'block';
+            setTimeout(() => location.reload(), 2500);
+        }
+    }
+</script>
+</body></html>

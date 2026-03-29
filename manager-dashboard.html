@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>LSM MANAGER - COMMAND CENTER</title><style>body{font-family:'Segoe UI',sans-serif;background:#1a1a1a;color:#eee;margin:0;padding:20px} .container{max-width:1000px;margin:0 auto} h1{color:#ff4500;border-bottom:2px solid #333;padding-bottom:10px} .job-card{background:#222;border-radius:10px;padding:20px;margin-bottom:15px;border-left:5px solid #ff4500;display:flex;justify-content:space-between;align-items:center} .info b{color:#fff;font-size:18px} .symptoms{font-size:13px;color:#888;margin-top:5px} .controls{display:flex;gap:10px} select, button{padding:10px;border-radius:5px;border:none;cursor:pointer} .assign-btn{background:#27ae60;color:white;font-weight:bold} .core-tag{padding:3px 8px;border-radius:4px;font-size:10px;font-weight:bold;text-transform:uppercase} .c1{background:#3498db} .c2{background:#f1c40f;color:#000} .c3{background:#e74c3c}</style></head><body>
+
+<div class="container">
+    <h1>👨‍✈️ Manager Command Center</h1>
+    <p>Incoming Vehicles (Needs Assignment):</p>
+    <div id="incoming-list">Loading queue...</div>
+</div>
+
+<script>
+    const u = "https://bdcwfgutqnfhacanswlk.supabase.co";
+    const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkY3dmZ3V0cW5maGFjYW5zd2xrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2OTg0NzMsImV4cCI6MjA5MDI3NDQ3M30.qHTe6H5ca5PQ9RahiIdrGc4eOMMJrZrSsACAl5mJm4A";
+    const _s = supabase.createClient(u, k);
+
+    // List of your 6 mechanics
+    const mechanics = ["Somchai", "Keo", "Noi", "Boun", "Phet", "Somsak"];
+
+    async function loadQueue() {
+        const { data, error } = await _s.from('job_cards')
+            .select('*, vehicles(model_type)')
+            .eq('current_status', 'QUEUED')
+            .order('id', { ascending: true });
+
+        const list = document.getElementById('incoming-list');
+        list.innerHTML = "";
+
+        if(data.length === 0) list.innerHTML = "No vehicles waiting in queue. 🎉";
+
+        data.forEach(job => {
+            const div = document.createElement('div');
+            div.className = 'job-card';
+            div.innerHTML = `
+                <div class="info">
+                    <span class="core-tag c${job.core_type}">CORE ${job.core_type}</span><br>
+                    <b>${job.vehicle_plate}</b> (${job.vehicles.model_type})<br>
+                    <div class="symptoms">🔧 Issues: ${job.symptoms}</div>
+                </div>
+                <div class="controls">
+                    <select id="mech-${job.id}">
+                        <option value="">Select Mechanic</option>
+                        ${mechanics.map(m => `<option value="${m}">${m}</option>`).join('')}
+                    </select>
+                    <button class="assign-btn" onclick="assignJob(${job.id})">ASSIGN WORK</button>
+                </div>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    async function assignJob(jobId) {
+        const mechName = document.getElementById(`mech-${jobId}`).value;
+        if(!mechName) return alert("Please select a mechanic!");
+
+        const { error } = await _s.from('job_cards')
+            .update({ 
+                assigned_mechanic_id: mechName, 
+                current_status: 'IN_REPAIR' 
+            })
+            .eq('id', jobId);
+
+        if(!error) {
+            alert("Job assigned to " + mechName);
+            loadQueue();
+        }
+    }
+
+    loadQueue();
+    // Refresh every 30 seconds automatically
+    setInterval(loadQueue, 30000);
+</script>
+</body></html>

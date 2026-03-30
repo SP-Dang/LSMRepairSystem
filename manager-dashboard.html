@@ -1,59 +1,101 @@
 <!DOCTYPE html>
-<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>LSM MANAGER - COMMAND CENTER</title><style>body{font-family:'Segoe UI',sans-serif;background:#1a1a1a;color:#eee;margin:0;padding:20px} .container{max-width:900px;margin:0 auto} h1{color:#ff4500;border-bottom:2px solid #333;padding-bottom:10px;display:flex;justify-content:space-between;align-items:center} .job-card{background:#222;border-radius:10px;padding:20px;margin-bottom:15px;border-left:5px solid #ff4500;display:flex;justify-content:space-between;align-items:center} .info b{color:#fff;font-size:18px} .symptoms{font-size:13px;color:#888;margin-top:5px;background:#111;padding:5px;border-radius:4px} .controls{display:flex;gap:10px} select, button{padding:10px;border-radius:5px;border:none;cursor:pointer;font-weight:bold} .assign-btn{background:#27ae60;color:white} .core-tag{padding:3px 8px;border-radius:4px;font-size:10px;font-weight:bold;text-transform:uppercase;margin-bottom:5px;display:inline-block} .c1{background:#3498db} .c2{background:#f1c40f;color:#000} .c3{background:#e74c3c}</style></head><body>
+<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>LSM MANAGER - CONTROL PANEL</title><style>
+    body{font-family:'Segoe UI',sans-serif;background:#1a1a1a;color:#eee;margin:0;padding:20px}
+    .container{max-width:900px;margin:0 auto}
+    .header{background:#222;padding:20px;border-radius:12px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #3498db}
+    .job-card{background:#282828;border-radius:10px;padding:20px;margin-bottom:15px;display:flex;justify-content:space-between;align-items:center;border-left:5px solid #3498db}
+    .info b{color:#fff;font-size:18px}
+    .symptoms{font-size:13px;color:#aaa;margin-top:8px;background:#111;padding:8px;border-radius:5px}
+    .controls{display:flex;gap:10px}
+    select, button{padding:10px;border-radius:6px;border:none;cursor:pointer;font-weight:bold}
+    .assign-btn{background:#27ae60;color:white}
+    .logout-btn{background:#e74c3c;color:white;font-size:12px;padding:8px 15px}
+    .core-tag{padding:3px 8px;border-radius:4px;font-size:10px;text-transform:uppercase;margin-bottom:5px;display:inline-block}
+    .c1{background:#3498db} .c2{background:#f1c40f;color:#000} .c3{background:#e74c3c}
+</style></head><body>
 
 <div class="container">
-    <h1><span>👨‍✈️ Manager Dashboard</span> <button onclick="loadQueue()" style="background:#444;color:white;font-size:12px">REFRESH</button></h1>
-    <p>Incoming Vehicles (Waiting for Assignment):</p>
-    <div id="incoming-list">Checking the garage...</div>
+    <div class="header">
+        <div>
+            <span style="font-size:11px;color:#888;display:block">LOGGED IN AS</span>
+            <b id="manager-name" style="color:#3498db;font-size:20px">...</b>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center">
+            <button onclick="getMechanicList()" style="background:#444;color:white">🔄 REFRESH</button>
+            <button class="logout-btn" onclick="logout()">LOGOUT</button>
+        </div>
+    </div>
+
+    <h2 style="font-size:16px;color:#888">INCOMING VEHICLES (QUEUED)</h2>
+    <div id="incoming-list">Checking the garage floor...</div>
 </div>
 
 <script>
-    // UPDATED PROJECT DETAILS
     const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
     const _s = supabase.createClient(u, k);
 
-    const mechanics = ["Somchai", "Keo", "Noi", "Boun", "Phet", "Somsak"];
+    let activeMechanics = []; 
+    const currentManager = localStorage.getItem('lsm_user_name');
+
+    // 1. Security Check
+    if(!currentManager) {
+        window.location.href = 'index.html';
+    } else {
+        document.getElementById('manager-name').innerText = currentManager;
+    }
+
+    // 2. Fetch mechanics and then load the queue
+    async function getMechanicList() {
+        console.log("Fetching mechanics...");
+        const { data, error } = await _s.from('staff')
+            .select('name')
+            .eq('role', 'MECHANIC')
+            .order('name');
+        
+        if(error || !data || data.length === 0) {
+            console.error("Staff Table Empty or Error:", error);
+            // Backup list so the manager isn't stuck
+            activeMechanics = ["Somchai", "Keo", "Noi", "Boun", "Phet", "Somsak"];
+        } else {
+            activeMechanics = data.map(m => m.name);
+        }
+        
+        // Immediately load the queue once names are ready
+        loadQueue(); 
+    }
 
     async function loadQueue() {
         const list = document.getElementById('incoming-list');
-        if (!list) return;
-
-        // Try to fetch data
         const { data, error } = await _s.from('job_cards')
-            .select('id, vehicle_plate, core_type, symptoms, current_status')
+            .select('*')
             .eq('current_status', 'QUEUED')
             .order('id', { ascending: true });
 
         if (error) {
-            console.error(error);
-            list.innerHTML = `<div style="color:#ff4500; padding:20px; border:1px solid #ff4500; border-radius:10px;">
-                <b>Connection Error:</b> ${error.message}<br>
-                <small>Check if RLS SELECT policy is enabled in Supabase.</small>
-            </div>`;
+            list.innerHTML = "Error loading data.";
+            return;
+        }
+
+        if(!data || data.length === 0) {
+            list.innerHTML = "<div style='text-align:center;padding:50px;color:#555'>No vehicles waiting.</div>";
             return;
         }
 
         list.innerHTML = "";
-
-        if(data && data.length === 0) {
-            list.innerHTML = "<div style='text-align:center;padding:40px;color:#666'>No vehicles waiting. Garage is clear! 🛠️</div>";
-            return;
-        }
-
         data.forEach(job => {
             const div = document.createElement('div');
             div.className = 'job-card';
             div.innerHTML = `
                 <div class="info">
                     <span class="core-tag c${job.core_type}">CORE ${job.core_type}</span><br>
-                    <b>${job.vehicle_plate}</b><br>
-                    <div class="symptoms">🔧 Issues: ${job.symptoms}</div>
+                    <b>${job.vehicle_plate}</b>
+                    <div class="symptoms">Issue: ${job.symptoms}</div>
                 </div>
                 <div class="controls">
-                    <select id="mech-${job.id}">
-                        <option value="">Pick Mechanic</option>
-                        ${mechanics.map(m => `<option value="${m}">${m}</option>`).join('')}
+                    <select id="mech-${job.id}" style="background:#444;color:white">
+                        <option value="">Assign To...</option>
+                        ${activeMechanics.map(m => `<option value="${m}">${m}</option>`).join('')}
                     </select>
                     <button class="assign-btn" onclick="assignJob(${job.id})">ASSIGN</button>
                 </div>
@@ -62,23 +104,27 @@
         });
     }
 
-    window.onload = loadQueue;
-    setInterval(loadQueue, 15000);
-
     async function assignJob(jobId) {
         const mechName = document.getElementById(`mech-${jobId}`).value;
-        if(!mechName) return alert("Please select a mechanic first!");
+        if(!mechName) return alert("Select a mechanic first!");
 
         const { error } = await _s.from('job_cards')
             .update({ assigned_mechanic_id: mechName, current_status: 'IN_REPAIR' })
             .eq('id', jobId);
 
         if(!error) {
-            alert("Job assigned!");
+            alert("Assigned to " + mechName);
             loadQueue();
-        } else {
-            alert("Assignment Error: " + error.message);
         }
     }
+
+    function logout() {
+        localStorage.clear();
+        window.location.href = 'index.html';
+    }
+
+    // Start everything
+    window.onload = getMechanicList;
+    setInterval(loadQueue, 20000); 
 </script>
 </body></html>

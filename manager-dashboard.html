@@ -8,23 +8,29 @@
 </div>
 
 <script>
+    // UPDATED PROJECT DETAILS
     const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
-    const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDI3NDQ3M30.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
+    const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
     const _s = supabase.createClient(u, k);
 
     const mechanics = ["Somchai", "Keo", "Noi", "Boun", "Phet", "Somsak"];
 
     async function loadQueue() {
         const list = document.getElementById('incoming-list');
-        if (!list) return; // Safety check
+        if (!list) return;
 
+        // Try to fetch data
         const { data, error } = await _s.from('job_cards')
             .select('id, vehicle_plate, core_type, symptoms, current_status')
             .eq('current_status', 'QUEUED')
             .order('id', { ascending: true });
 
         if (error) {
-            list.innerHTML = `<div style="color:red">Error: ${error.message}</div>`;
+            console.error(error);
+            list.innerHTML = `<div style="color:#ff4500; padding:20px; border:1px solid #ff4500; border-radius:10px;">
+                <b>Connection Error:</b> ${error.message}<br>
+                <small>Check if RLS SELECT policy is enabled in Supabase.</small>
+            </div>`;
             return;
         }
 
@@ -56,7 +62,6 @@
         });
     }
 
-    // Run on start
     window.onload = loadQueue;
     setInterval(loadQueue, 15000);
 
@@ -71,6 +76,8 @@
         if(!error) {
             alert("Job assigned!");
             loadQueue();
+        } else {
+            alert("Assignment Error: " + error.message);
         }
     }
 </script>

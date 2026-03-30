@@ -1,11 +1,46 @@
 <!DOCTYPE html>
-<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>LSM RECEPTION - TUK TUK CHECK-IN</title><style>body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;margin:0;padding:20px} .card{max-width:600px;margin:0 auto;background:#fff;padding:30px;border-radius:15px;box-shadow:0 8px 30px rgba(0,0,0,0.1)} h2{color:#1a1a1a;margin-top:0;border-bottom:3px solid #ff4500;padding-bottom:10px;display:flex;justify-content:space-between} .section-label{font-size:12px;font-weight:900;color:#ff4500;margin:20px 0 10px;text-transform:uppercase;letter-spacing:1px} .grid{display:grid;grid-template-columns:1fr 1fr;gap:15px} .form-group{margin-bottom:12px} label{display:block;margin-bottom:5px;font-weight:bold;font-size:13px;color:#444} input,select,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;box-sizing:border-box;font-size:14px} .check-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#f9f9f9;padding:15px;border-radius:10px} .check-item{display:flex;align-items:center;font-size:13px;cursor:pointer} .check-item input{width:auto;margin-right:10px} .core-selection{display:flex;gap:10px;margin-bottom:20px} .core-btn{flex:1;padding:12px;border:2px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;text-align:center;font-size:12px;font-weight:bold;transition:0.3s} .core-btn.active{background:#ff4500;color:#fff;border-color:#ff4500} button#submit{width:100%;padding:18px;background:#1a1a1a;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:20px;transition:0.2s} button#submit:hover{background:#333} .success-msg{display:none;background:#d4edda;color:#155724;padding:15px;border-radius:8px;text-align:center;margin-top:15px;font-weight:bold}
-/* New Logout Style */
-.logout-btn{font-size:12px;color:#888;cursor:pointer;text-decoration:underline;border:none;background:none;padding:0} .logout-btn:hover{color:#ff4500}</style></head><body>
+<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>LSM RECEPTION - TUK TUK CHECK-IN</title><style>
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;margin:0;padding:20px} 
+    .card{max-width:600px;margin:0 auto;background:#fff;padding:30px;border-radius:15px;box-shadow:0 8px 30px rgba(0,0,0,0.1)} 
+    h2{color:#1a1a1a;margin-top:0;border-bottom:3px solid #ff4500;padding-bottom:10px;display:flex;justify-content:space-between} 
+    .section-label{font-size:12px;font-weight:900;color:#ff4500;margin:20px 0 10px;text-transform:uppercase;letter-spacing:1px} 
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:15px} 
+    .form-group{margin-bottom:12px} 
+    label{display:block;margin-bottom:5px;font-weight:bold;font-size:13px;color:#444} 
+    input,select,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;box-sizing:border-box;font-size:14px} 
+    .check-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#f9f9f9;padding:15px;border-radius:10px} 
+    .check-item{display:flex;align-items:center;font-size:13px;cursor:pointer} 
+    .check-item input{width:auto;margin-right:10px} 
+    .core-selection{display:flex;gap:10px;margin-bottom:20px} 
+    .core-btn{flex:1;padding:12px;border:2px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;text-align:center;font-size:12px;font-weight:bold;transition:0.3s} 
+    .core-btn.active{background:#ff4500;color:#fff;border-color:#ff4500} 
+    button#submit{width:100%;padding:18px;background:#1a1a1a;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:20px;transition:0.2s} 
+    button#submit:hover{background:#333} 
+    .success-msg{display:none;background:#d4edda;color:#155724;padding:15px;border-radius:8px;text-align:center;margin-top:15px;font-weight:bold}
+    .logout-btn {
+    font-size: 14px;      /* Was 12px */
+    color: #e74c3c;      /* Professional Red */
+    cursor: pointer;
+    text-decoration: none;
+    border: 1px solid #e74c3c; /* Adds a small border to make it look like a button */
+    background: none;
+    padding: 4px 10px;
+    border-radius: 5px;
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+.logout-btn:hover {
+    background: #e74c3c;
+    color: #fff;
+}
+    /* Style for the auto-fill notification */
+    #search-status { font-size: 10px; font-weight: bold; margin-top: 4px; display: block; }
+</style></head><body>
 
 <div class="card">
     <h2>
-        <span>🆕 E-Tricyle Check-In</span> 
+        <span>🆕 E-Tricycle Check-In</span> 
         <div style="text-align:right">
             <div id="user-display" style="font-size:12px;color:#888;font-weight:normal">Loading...</div>
             <button class="logout-btn" onclick="logout()">Logout</button>
@@ -14,7 +49,11 @@
     
     <div class="section-label">Vehicle & Owner Info</div>
     <div class="grid">
-        <div class="form-group"><label>Plate Number</label><input type="text" id="plate" placeholder="e.g. 1234 VT"></div>
+        <div class="form-group">
+            <label>Plate Number</label>
+            <input type="text" id="plate" placeholder="e.g. 1234 VT" onblur="lookupVehicle()" style="text-transform:uppercase">
+            <span id="search-status"></span>
+        </div>
         <div class="form-group"><label>Vehicle Model</label><input type="text" id="model" placeholder="E5, E7, M5"></div>
     </div>
     <div class="grid">
@@ -35,9 +74,9 @@
 
     <div class="section-label">Repair Core Assignment</div>
     <div class="core-selection">
-        <div class="core-btn" onclick="setCore(1, this)">CORE 1: IN/OUT</div>
-        <div class="core-btn active" onclick="setCore(2, this)">CORE 2: MINOR</div>
-        <div class="core-btn" onclick="setCore(3, this)">CORE 3: GMS</div>
+        <div class="core-btn" id="core-1" onclick="setCore(1, this)">CORE 1: IN/OUT</div>
+        <div class="core-btn active" id="core-2" onclick="setCore(2, this)">CORE 2: MINOR</div>
+        <div class="core-btn" id="core-3" onclick="setCore(3, this)">CORE 3: GMS</div>
     </div>
 
     <button id="submit" onclick="submitJob()">CREATE JOB CARD</button>
@@ -49,7 +88,7 @@
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
     const _s = supabase.createClient(u, k);
 
-    // SECURITY: Check for logged in user
+    // SECURITY & USER DISPLAY
     const currentStaff = localStorage.getItem('lsm_user_name');
     if(!currentStaff) {
         window.location.href = 'index.html';
@@ -65,18 +104,58 @@
         el.classList.add('active');
     }
 
+    // --- NEW AUTO-FILL LOGIC ---
+    async function lookupVehicle() {
+        const plate = document.getElementById('plate').value.trim().toUpperCase();
+        const status = document.getElementById('search-status');
+        
+        if (plate.length < 3) return;
+
+        status.innerText = "🔍 Checking history...";
+        status.style.color = "#888";
+
+        // Check 'vehicles' table for existing data
+        const { data, error } = await _s.from('vehicles')
+            .select('*')
+            .eq('plate_no', plate)
+            .maybeSingle();
+
+        if (data) {
+            document.getElementById('vin').value = data.vin_no || "";
+            document.getElementById('model').value = data.model_type || "";
+            document.getElementById('owner').value = data.owner_name || "";
+            document.getElementById('phone').value = data.owner_phone || "";
+            
+            status.innerText = "✅ Data found & auto-filled.";
+            status.style.color = "#27ae60";
+            
+            // Visual highlight
+            document.querySelectorAll('.grid input').forEach(i => {
+                if(i.value) i.style.background = "#e8f5e9";
+            });
+        } else {
+            status.innerText = "🆕 New vehicle detected.";
+            status.style.color = "#e67e22";
+        }
+    }
+
     async function submitJob() {
-        const plate = document.getElementById('plate').value;
+        const plate = document.getElementById('plate').value.toUpperCase();
         const model = document.getElementById('model').value;
         const vin = document.getElementById('vin').value;
         const owner = document.getElementById('owner').value;
         const phone = document.getElementById('phone').value;
+        const btn = document.getElementById('submit');
         
-        const symptoms = Array.from(document.querySelectorAll('.symptom:checked')).map(cb => cb.value).join(', ');
+        const symptoms = Array.from(document.querySelectorAll('.symptom:checked'))
+                             .map(cb => cb.value).join(', ');
 
         if(!plate) return alert("Plate Number is required!");
 
-        // 1. Update Vehicle Master List
+        btn.disabled = true;
+        btn.innerText = "PROCESSING...";
+
+        // 1. Update Vehicle Master List (Upsert means Insert or Update if exists)
         await _s.from('vehicles').upsert({ 
             plate_no: plate, 
             owner_name: owner, 
@@ -85,7 +164,7 @@
             vin_no: vin 
         });
 
-        // 2. Create Job Card with created_by tracking
+        // 2. Create Job Card
         const { data, error } = await _s.from('job_cards').insert([{
             vehicle_plate: plate,
             core_type: selectedCore,
@@ -96,10 +175,12 @@
 
         if (error) {
             alert("Error: " + error.message);
+            btn.disabled = false;
+            btn.innerText = "CREATE JOB CARD";
         } else {
             document.getElementById('jobNo').innerText = data[0].id;
             document.getElementById('msg').style.display = 'block';
-            setTimeout(() => location.reload(), 2500);
+            setTimeout(() => location.reload(), 2000);
         }
     }
 

@@ -1,32 +1,32 @@
 <!DOCTYPE html>
-<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>LSM MECHANIC - MY JOBS</title><style>body{font-family:'Segoe UI',sans-serif;background:#f4f7f6;margin:0;padding:15px} .header{background:#1a1a1a;color:#ff4500;padding:15px;border-radius:10px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center} .job-card{background:#fff;border-radius:12px;padding:20px;margin-bottom:15px;box-shadow:0 4px 12px rgba(0,0,0,0.08);border-top:5px solid #27ae60} h2{margin:0;font-size:22px;color:#333} .symptoms{background:#fff8e1;padding:10px;border-radius:6px;margin:10px 0;font-size:14px;color:#856404;border:1px solid #ffeeba} .btn-complete{width:100%;padding:15px;background:#27ae60;color:white;border:none;border-radius:8px;font-weight:bold;font-size:16px;cursor:pointer;margin-top:10px} select{padding:10px;width:100%;margin-bottom:10px;border-radius:5px;border:1px solid #ccc}</style></head><body>
+<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>LSM MECHANIC - MY JOBS</title><style>body{font-family:'Segoe UI',sans-serif;background:#f4f7f6;margin:0;padding:15px} .header{background:#1a1a1a;color:#ff4500;padding:15px;border-radius:10px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center} .job-card{background:#fff;border-radius:12px;padding:20px;margin-bottom:15px;box-shadow:0 4px 12px rgba(0,0,0,0.08);border-top:5px solid #27ae60} h2{margin:0;font-size:22px;color:#333} .symptoms{background:#fff8e1;padding:10px;border-radius:6px;margin:10px 0;font-size:14px;color:#856404;border:1px solid #ffeeba} .btn-complete{width:100%;padding:15px;background:#27ae60;color:white;border:none;border-radius:8px;font-weight:bold;font-size:16px;cursor:pointer;margin-top:10px} .logout-btn{background:transparent;color:#ff4500;border:1px solid #ff4500;padding:5px 10px;border-radius:5px;font-size:12px;cursor:pointer}</style></head><body>
 
 <div class="header">
-    <span>🛠️ Mechanic Portal</span>
-    <select id="me-selector" onchange="loadMyWork()" style="width:auto;margin:0">
-        <option value="">Who are you?</option>
-        <option value="Somchai">Somchai</option>
-        <option value="Keo">Keo</option>
-        <option value="Noi">Noi</option>
-        <option value="Boun">Boun</option>
-        <option value="Phet">Phet</option>
-        <option value="Somsak">Somsak</option>
-    </select>
+    <div>
+        <span style="display:block;font-size:10px;color:#888;text-transform:uppercase">Active Mechanic</span>
+        <span id="display-name" style="font-weight:bold;font-size:18px">...</span>
+    </div>
+    <button class="logout-btn" onclick="logout()">LOGOUT</button>
 </div>
 
-<div id="work-list">Please select your name above to see your jobs.</div>
+<div id="work-list">Loading your tools...</div>
 
 <script>
     const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
     const _s = supabase.createClient(u, k);
 
-    async function loadMyWork() {
-        const myName = document.getElementById('me-selector').value;
-        const list = document.getElementById('work-list');
-        if(!myName) return;
+    // Get the name from memory
+    const myName = localStorage.getItem('lsm_user_name');
 
-        list.innerHTML = "Fetching your tools...";
+    async function loadMyWork() {
+        if(!myName) {
+            window.location.href = 'index.html'; // Send back to login if name is missing
+            return;
+        }
+        
+        document.getElementById('display-name').innerText = myName;
+        const list = document.getElementById('work-list');
 
         const { data, error } = await _s.from('job_cards')
             .select('*')
@@ -36,7 +36,7 @@
         list.innerHTML = "";
 
         if(data && data.length === 0) {
-            list.innerHTML = "<div style='text-align:center;padding:50px;color:#999'>No active repairs. Take a break! ☕</div>";
+            list.innerHTML = "<div style='text-align:center;padding:50px;color:#999'>No active repairs for you, " + myName + ". ☕</div>";
             return;
         }
 
@@ -54,16 +54,19 @@
     }
 
     async function finishJob(jobId) {
-        if(!confirm("Is the repair finished and ready for inspection?")) return;
-
-        const { error } = await _s.from('job_cards')
-            .update({ current_status: 'PDI' })
-            .eq('id', jobId);
-
+        if(!confirm("Is the repair finished?")) return;
+        const { error } = await _s.from('job_cards').update({ current_status: 'PDI' }).eq('id', jobId);
         if(!error) {
-            alert("Great job! Vehicle moved to PDI.");
+            alert("Vehicle moved to PDI!");
             loadMyWork();
         }
     }
+
+    function logout() {
+        localStorage.clear();
+        window.location.href = 'index.html';
+    }
+
+    window.onload = loadMyWork;
 </script>
 </body></html>

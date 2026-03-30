@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>LSM - REPAIR HISTORY</title><style>
+    body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;margin:0;padding:20px}
+    .container{max-width:1100px;margin:0 auto}
+    .search-panel{background:#fff;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.05);margin-bottom:20px;display:flex;gap:15px;align-items:flex-end;flex-wrap:wrap}
+    .filter-group{display:flex;flex-direction:column;gap:5px}
+    label{font-size:11px;font-weight:bold;color:#666;text-transform:uppercase}
+    input{padding:10px;border:1px solid #ddd;border-radius:6px;font-size:14px}
+    .btn-search{padding:10px 25px;background:#1a1a1a;color:white;border:none;border-radius:6px;font-weight:bold;cursor:pointer}
+    .history-table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 15px rgba(0,0,0,0.05)}
+    .history-table th{background:#f8f9fa;padding:15px;text-align:left;border-bottom:2px solid #eee;font-size:13px;color:#444}
+    .history-table td{padding:15px;border-bottom:1px solid #eee;font-size:14px;color:#333}
+    .status-badge{padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold;background:#e1f5fe;color:#01579b}
+    .core-tag{font-size:10px;padding:2px 5px;border-radius:3px;margin-right:5px;color:white}
+</style></head><body>
+
+<div class="container">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <h1>📜 Repair History Search</h1>
+        <a href="manager-dashboard.html" style="text-decoration:none;color:#ff4500;font-weight:bold">← Back</a>
+    </div>
+
+    <div class="search-panel">
+        <div class="filter-group">
+            <label>Search Plate Number</label>
+            <input type="text" id="search-plate" placeholder="e.g. 1234 VT" style="text-transform:uppercase;width:150px">
+        </div>
+        <div class="filter-group">
+            <label>From Date</label>
+            <input type="date" id="date-from">
+        </div>
+        <div class="filter-group">
+            <label>To Date</label>
+            <input type="date" id="date-to">
+        </div>
+        <button class="btn-search" onclick="fetchHistory()">🔍 SEARCH HISTORY</button>
+    </div>
+
+    <table class="history-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Vehicle Plate</th>
+                <th>Core</th>
+                <th>Mechanic</th>
+                <th>PDI By</th>
+                <th>Symptoms</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody id="history-body">
+            <tr><td colspan="7" style="text-align:center;padding:50px;color:#888">Enter a plate or select dates to begin...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
+    const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
+    const _s = supabase.createClient(u, k);
+
+    // Set default dates (Last 30 days)
+    window.onload = () => {
+        const today = new Date();
+        const lastMonth = new Date();
+        lastMonth.setDate(today.getDate() - 30);
+        
+        document.getElementById('date-to').value = today.toISOString().split('T')[0];
+        document.getElementById('date-from').value = lastMonth.toISOString().split('T')[0];
+        fetchHistory();
+    };
+
+    async function fetchHistory() {
+        const plate = document.getElementById('search-plate').value.toUpperCase();
+        const from = document.getElementById('date-from').value;
+        const to = document.getElementById('date-to').value;
+        const tbody = document.getElementById('history-body');
+
+        tbody.innerHTML = "<tr><td colspan='7' style='text-align:center'>Searching records...</td></tr>";
+
+        let query = _s.from('job_cards').select('*').order('arrival_time', { ascending: false });
+
+        // Apply filters
+        if (plate) query = query.ilike('vehicle_plate', `%${plate}%`);
+        if (from) query = query.gte('arrival_time', `${from}T00:00:00`);
+        if (to) query = query.lte('arrival_time', `${to}T23:59:59`);
+
+        const { data, error } = await query.limit(100);
+
+        if (error) {
+            tbody.innerHTML = `<tr><td colspan='7' style='color:red'>Error: ${error.message}</td></tr>`;
+            return;
+        }
+
+        if (data.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='7' style='text-align:center'>No matching records found.</td></tr>";
+            return;
+        }
+
+        tbody.innerHTML = "";
+        data.forEach(job => {
+            const dateStr = new Date(job.arrival_time).toLocaleDateString('en-GB');
+            const row = `
+                <tr>
+                    <td>${dateStr}</td>
+                    <td style="font-weight:bold">${job.vehicle_plate}</td>
+                    <td><span class="core-tag" style="background:${job.core_type==1?'#3498db':job.core_type==2?'#f1c40f':'#e74c3c'}">C${job.core_type}</span></td>
+                    <td>${job.assigned_mechanic_id || '-'}</td>
+                    <td>${job.pdi_by || '-'}</td>
+                    <td style="font-size:12px;color:#666;max-width:200px">${job.symptoms}</td>
+                    <td><span class="status-badge">${job.current_status}</span></td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+    }
+</script>
+</body></html>

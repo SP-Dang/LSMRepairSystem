@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>LSM - PDI & RELEASE</title><style>
+    body{font-family:'Segoe UI',sans-serif;background:#f4f7f6;margin:0;padding:15px}
+    .header{background:#1a1a1a;color:#ff4500;padding:15px;border-radius:10px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}
+    .pdi-card{background:#fff;border-radius:12px;padding:20px;margin-bottom:15px;box-shadow:0 4px 12px rgba(0,0,0,0.08);border-top:5px solid #ff4500}
+    h2{margin:0;font-size:20px;color:#333}
+    .check-list{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#fff8e1;padding:15px;border-radius:8px;margin:15px 0}
+    .check-item{display:flex;align-items:center;font-size:13px;font-weight:bold;color:#555}
+    .check-item input{margin-right:10px;transform:scale(1.2)}
+    .btn-release{width:100%;padding:15px;background:#1a1a1a;color:white;border:none;border-radius:8px;font-weight:bold;font-size:16px;cursor:not-allowed;opacity:0.5}
+    .btn-release.ready{background:#27ae60;cursor:pointer;opacity:1}
+    .logout-btn{background:transparent;color:#ff4500;border:1px solid #ff4500;padding:5px 10px;border-radius:5px;font-size:12px;cursor:pointer}
+</style></head><body>
+
+<div class="header">
+    <div>
+        <span style="display:block;font-size:10px;color:#888;text-transform:uppercase">PDI Inspector</span>
+        <span id="display-name" style="font-weight:bold;font-size:18px">...</span>
+    </div>
+    <button class="logout-btn" onclick="logout()">LOGOUT</button>
+</div>
+
+<div id="pdi-list">Loading pending inspections...</div>
+
+<script>
+    const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
+    const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
+    const _s = supabase.createClient(u, k);
+
+    const myName = localStorage.getItem('lsm_user_name');
+
+    async function loadPDIQueue() {
+        if(!myName) { window.location.href = 'index.html'; return; }
+        document.getElementById('display-name').innerText = myName;
+
+        const { data, error } = await _s.from('job_cards')
+            .select('*')
+            .eq('current_status', 'PDI')
+            .order('id', { ascending: true });
+
+        const list = document.getElementById('pdi-list');
+        list.innerHTML = "";
+
+        if(data.length === 0) {
+            list.innerHTML = "<div style='text-align:center;padding:50px;color:#999'>No vehicles waiting for PDI. 🏁</div>";
+            return;
+        }
+
+        data.forEach(job => {
+            const card = document.createElement('div');
+            card.className = 'pdi-card';
+            card.innerHTML = `
+                <div style="font-size:12px;color:#888">JOB #${job.id} | Mech: ${job.assigned_mechanic_id}</div>
+                <h2>${job.vehicle_plate}</h2>
+                <div class="check-list" id="checks-${job.id}">
+                    <label class="check-item"><input type="checkbox" onchange="validate(${job.id})"> Suspension</label>
+                    <label class="check-item"><input type="checkbox" onchange="validate(${job.id})"> Brakes</label>
+                    <label class="check-item"><input type="checkbox" onchange="validate(${job.id})"> Wheels/Tires</label>
+                    <label class="check-item"><input type="checkbox" onchange="validate(${job.id})"> Power Train</label>
+                    <label class="check-item"><input type="checkbox" onchange="validate(${job.id})"> Lights</label>
+                    <label class="check-item"><input type="checkbox" onchange="validate(${job.id})"> Battery</label>
+                </div>
+                <button id="btn-${job.id}" class="btn-release" onclick="releaseVehicle(${job.id})">APPROVE & RELEASE TO CUSTOMER</button>
+            `;
+            list.appendChild(card);
+        });
+    }
+
+    // Only allow clicking "Release" if all 6 checkboxes are ticked
+    function validate(jobId) {
+        const container = document.getElementById(`checks-${jobId}`);
+        const checks = container.querySelectorAll('input[type="checkbox"]');
+        const btn = document.getElementById(`btn-${jobId}`);
+        const allChecked = Array.from(checks).every(c => c.checked);
+        
+        if(allChecked) {
+            btn.classList.add('ready');
+        } else {
+            btn.classList.remove('ready');
+        }
+    }
+
+    async function releaseVehicle(jobId) {
+        const btn = document.getElementById(`btn-${jobId}`);
+        if(!btn.classList.contains('ready')) return alert("Please check all 6 points first!");
+
+        if(!confirm("Are you sure this vehicle is safe to release?")) return;
+
+        const { error } = await _s.from('job_cards')
+            .update({ 
+                current_status: 'FINISHED',
+                pdi_by: myName
+            })
+            .eq('id', jobId);
+
+        if(!error) {
+            alert("Vehicle Released! It is now in Repair History.");
+            loadPDIQueue();
+        }
+    }
+
+    function logout() {
+        localStorage.clear();
+        window.location.href = 'index.html';
+    }
+
+    window.onload = loadPDIQueue;
+</script>
+</body></html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>LSM - WAREHOUSE</title><style>
+    body{font-family:'Segoe UI',sans-serif;background:#2c3e50;color:#eee;margin:0;padding:15px}
+    .header{background:#1a1a1a;padding:15px;border-radius:10px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #f1c40f}
+    .request-card{background:#fff;color:#333;border-radius:10px;padding:15px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;border-left:8px solid #f1c40f}
+    .part-info b{font-size:18px;display:block}
+    .part-info span{font-size:12px;color:#7f8c8d}
+    .btn-issue{background:#27ae60;color:white;border:none;padding:12px 20px;border-radius:6px;font-weight:bold;cursor:pointer}
+    .logout-btn{background:transparent;border:1px solid #f1c40f;color:#f1c40f;padding:5px 10px;border-radius:5px;font-size:12px}
+</style></head><body>
+
+<div class="header">
+    <div>
+        <span style="font-size:10px;color:#888;display:block">WAREHOUSE STAFF</span>
+        <b id="user-display">...</b>
+    </div>
+    <button class="logout-btn" onclick="logout()">LOGOUT</button>
+</div>
+
+<h2 style="font-size:16px;color:#bdc3c7">PENDING PART REQUESTS</h2>
+<div id="request-list">Waiting for mechanics to request parts...</div>
+
+<script>
+    const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
+    const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
+    const _s = supabase.createClient(u, k);
+
+    const staffName = localStorage.getItem('lsm_user_name');
+    if(!staffName) window.location.href = 'index.html';
+    document.getElementById('user-display').innerText = staffName;
+
+    async function loadRequests() {
+        const { data, error } = await _s.from('part_requests')
+            .select('*, job_cards(vehicle_plate)')
+            .eq('status', 'PENDING')
+            .order('request_time', { ascending: true });
+
+        const list = document.getElementById('request-list');
+        list.innerHTML = "";
+
+        if(data.length === 0) {
+            list.innerHTML = "<div style='text-align:center;padding:50px;color:#7f8c8d'>No open requests. 📭</div>";
+            return;
+        }
+
+        data.forEach(req => {
+            const div = document.createElement('div');
+            div.className = 'request-card';
+            div.innerHTML = `
+                <div class="part-info">
+                    <span>JOB: ${req.job_cards.vehicle_plate} | FROM: ${req.requested_by}</span>
+                    <b>${req.quantity}x ${req.part_name}</b>
+                </div>
+                <button class="btn-issue" onclick="issuePart(${req.id})">ISSUE PART</button>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    async function issuePart(reqId) {
+        const { error } = await _s.from('part_requests')
+            .update({ status: 'ISSUED', issued_by: staffName })
+            .eq('id', reqId);
+
+        if(!error) {
+            alert("Part Recorded as Issued!");
+            loadRequests();
+        }
+    }
+
+    function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+
+    loadRequests();
+    setInterval(loadRequests, 15000); // Check for new mechanic requests every 15 seconds
+</script>
+</body></html>

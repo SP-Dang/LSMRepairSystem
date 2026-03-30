@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LAO SMART MOBILITY TP - SYSTEM ACCESS</title>
+    <style>
+        :root { --primary: #ff4500; --dark: #1a1a1a; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--dark); color: white; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .login-box { background: #222; padding: 30px; border-radius: 20px; width: 100%; max-width: 350px; border: 1px solid #333; text-align: center; }
+        .logo { font-size: 28px; font-weight: 900; color: var(--primary); margin-bottom: 20px; }
+        select, input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #444; background: #111; color: white; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .footer { margin-top: 20px; font-size: 11px; color: #555; }
+    </style>
+</head>
+<body>
+
+<div class="login-box">
+    <div class="logo">LSM Repair System TP</div>
+    <p>Select your name to login:</p>
+    
+    <select id="staff-name">
+        <option value="">Loading Staff...</option>
+    </select>
+    
+    <input type="password" id="staff-pin" placeholder="Enter PIN" inputmode="numeric">
+    
+    <button onclick="attemptLogin()">LOGIN</button>
+    <div class="footer">Powered by Somphone</div>
+</div>
+
+<script>
+    // 1. Connection Details
+    const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
+    const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
+    const _s = supabase.createClient(u, k);
+
+    // 2. Load staff names into the dropdown when the page opens
+    async function loadStaff() {
+        const { data, error } = await _s.from('staff').select('name').order('name');
+        const select = document.getElementById('staff-name');
+        
+        if (error) {
+            console.error("Error loading staff:", error);
+            return;
+        }
+
+        select.innerHTML = '<option value="">-- Select Name --</option>';
+        data.forEach(s => {
+            select.innerHTML += `<option value="${s.name}">${s.name}</option>`;
+        });
+    }
+
+    // 3. THE UPDATED ATTEMPT LOGIN FUNCTION
+async function login() {
+    const pin = document.getElementById('pin-input').value;
+    console.log("Attempting login with PIN:", pin);
+
+    if (!pin) return alert("Please enter your PIN");
+
+    try {
+        const { data, error } = await _s.from('staff')
+            .select('name, role, pin')
+            .eq('pin', pin)
+            .maybeSingle(); // Use maybeSingle to avoid errors if PIN is wrong
+
+        if (error) {
+            console.error("Supabase Error:", error);
+            alert("Database Error: " + error.message);
+            return;
+        }
+
+        if (data) {
+            console.log("User Found:", data.name, "Role:", data.role);
+            
+            // Save to browser memory
+            localStorage.setItem('lsm_user_name', data.name);
+            localStorage.setItem('lsm_user_role', data.role);
+
+            // Redirect based on role
+            const role = data.role ? data.role.toUpperCase() : "";
+
+            if (role === 'MANAGER') {
+                window.location.href = 'manager-dashboard.html';
+            } else if (role === 'RECEPTIONIST') {
+                window.location.href = 'reception-checkin.html';
+            } else if (role === 'MECHANIC') {
+                window.location.href = 'mechanic-view.html';
+            } else if (role === 'PDI') {
+                window.location.href = 'pdi-release.html';
+            } else if (role === 'WAREHOUSE') {
+                window.location.href = 'warehouse-parts.html';
+            } else {
+                alert("Role not recognized: " + role + ". Contact Manager.");
+            }
+        } else {
+            alert("Invalid PIN. Access Denied.");
+        }
+    } catch (err) {
+        console.error("System Error:", err);
+        alert("System Error: " + err.message);
+    }
+}
+    // Initialize the page
+    loadStaff();
+</script>
+
+</body>
+</html>

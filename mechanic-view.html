@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>LSM MECHANIC - MY JOBS</title><style>body{font-family:'Segoe UI',sans-serif;background:#f4f7f6;margin:0;padding:15px} .header{background:#1a1a1a;color:#ff4500;padding:15px;border-radius:10px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center} .job-card{background:#fff;border-radius:12px;padding:20px;margin-bottom:15px;box-shadow:0 4px 12px rgba(0,0,0,0.08);border-top:5px solid #27ae60} h2{margin:0;font-size:22px;color:#333} .symptoms{background:#fff8e1;padding:10px;border-radius:6px;margin:10px 0;font-size:14px;color:#856404;border:1px solid #ffeeba} .btn-complete{width:100%;padding:15px;background:#27ae60;color:white;border:none;border-radius:8px;font-weight:bold;font-size:16px;cursor:pointer;margin-top:10px} select{padding:10px;width:100%;margin-bottom:10px;border-radius:5px;border:1px solid #ccc}</style></head><body>
+
+<div class="header">
+    <span>🛠️ Mechanic Portal</span>
+    <select id="me-selector" onchange="loadMyWork()" style="width:auto;margin:0">
+        <option value="">Who are you?</option>
+        <option value="Somchai">Somchai</option>
+        <option value="Keo">Keo</option>
+        <option value="Noi">Noi</option>
+        <option value="Boun">Boun</option>
+        <option value="Phet">Phet</option>
+        <option value="Somsak">Somsak</option>
+    </select>
+</div>
+
+<div id="work-list">Please select your name above to see your jobs.</div>
+
+<script>
+    const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
+    const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
+    const _s = supabase.createClient(u, k);
+
+    async function loadMyWork() {
+        const myName = document.getElementById('me-selector').value;
+        const list = document.getElementById('work-list');
+        if(!myName) return;
+
+        list.innerHTML = "Fetching your tools...";
+
+        const { data, error } = await _s.from('job_cards')
+            .select('*')
+            .eq('assigned_mechanic_id', myName)
+            .eq('current_status', 'IN_REPAIR');
+
+        list.innerHTML = "";
+
+        if(data && data.length === 0) {
+            list.innerHTML = "<div style='text-align:center;padding:50px;color:#999'>No active repairs. Take a break! ☕</div>";
+            return;
+        }
+
+        data.forEach(job => {
+            const card = document.createElement('div');
+            card.className = 'job-card';
+            card.innerHTML = `
+                <div style="font-size:12px;color:#666">JOB #${job.id}</div>
+                <h2>${job.vehicle_plate}</h2>
+                <div class="symptoms"><b>Reported Issues:</b><br>${job.symptoms}</div>
+                <button class="btn-complete" onclick="finishJob(${job.id})">DONE - SEND TO PDI</button>
+            `;
+            list.appendChild(card);
+        });
+    }
+
+    async function finishJob(jobId) {
+        if(!confirm("Is the repair finished and ready for inspection?")) return;
+
+        const { error } = await _s.from('job_cards')
+            .update({ current_status: 'PDI' })
+            .eq('id', jobId);
+
+        if(!error) {
+            alert("Great job! Vehicle moved to PDI.");
+            loadMyWork();
+        }
+    }
+</script>
+</body></html>

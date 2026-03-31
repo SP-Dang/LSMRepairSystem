@@ -4,57 +4,104 @@
     <meta charset="UTF-8"><title>LSM - GM COMMAND CENTER</title>
     <style>
         body{font-family:'Segoe UI',sans-serif; background:#f0f2f5; margin:0; padding:20px;}
-        .gm-header{background:#1a2a3a; color:white; padding:30px; border-radius:15px; margin-bottom:25px; text-align:center;}
+        .gm-header{background:#1a2a3a; color:white; padding:30px; border-radius:15px; margin-bottom:25px; text-align:center; position:relative;}
         .menu-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:20px;}
         .menu-card{background:white; padding:25px; border-radius:15px; text-decoration:none; color:#333; 
-                   box-shadow:0 4px 15px rgba(0,0,0,0.05); transition:transform 0.2s; border-top:5px solid #27ae60;}
+                   box-shadow:0 4px 15px rgba(0,0,0,0.05); transition:transform 0.2s; border-top:5px solid #27ae60; position:relative;}
         .menu-card:hover{transform:translateY(-5px); box-shadow:0 8px 25px rgba(0,0,0,0.1);}
-        .card-icon{font-size:40px; margin-bottom:15px; display:block;}
-        .card-title{font-size:20px; font-weight:bold; color:#2c3e50;}
-        .card-desc{font-size:14px; color:#7f8c8d; margin-top:8px;}
-        .badge{background:#e74c3c; color:white; padding:2px 8px; border-radius:10px; font-size:12px; float:right;}
+        .card-icon{font-size:35px; margin-bottom:10px; display:block;}
+        .card-title{font-size:18px; font-weight:bold; color:#2c3e50;}
+        .card-desc{font-size:13px; color:#7f8c8d; margin-top:5px;}
+        
+        /* Live Stat Badges */
+        .stat-badge { position:absolute; top:15px; right:15px; background:#e74c3c; color:white; 
+                      padding:4px 10px; border-radius:20px; font-size:11px; font-weight:bold; display:none; }
+        .badge-green { background:#27ae60; }
+        
+        .logout-btn { position:absolute; top:10px; right:10px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.3); color:white; padding:5px 12px; border-radius:5px; cursor:pointer; font-size:12px; }
     </style>
 </head><body>
 
 <div class="gm-header">
-    <h1>LSM TAXI & AUTO SHOP</h1>
-    <p>General Manager Dashboard</p>
+    <button class="logout-btn" onclick="logout()">SECURE LOGOUT</button>
+    <h1 style="margin:0">LSM COMMAND CENTER</h1>
+    <p style="opacity:0.8">General Manager: <span id="gm-name-display">...</span></p>
 </div>
 
 <div class="menu-grid">
     <a href="inventory-manager.html" class="menu-card" style="border-color:#27ae60">
+        <span id="low-stock-alert" class="stat-badge">0 LOW</span>
         <span class="card-icon">📦</span>
         <span class="card-title">Inventory Manager</span>
-        <p class="card-desc">Add/Edit parts, track stock levels, and check total inventory value.</p>
+        <p class="card-desc">Current Value: <b id="total-inv-value">$0</b></p>
+    </a>
+
+    <a href="reception-input.html" class="menu-card" style="border-color:#f1c40f">
+        <span id="active-jobs-alert" class="stat-badge badge-green">0 ACTIVE</span>
+        <span class="card-icon">🚕</span>
+        <span class="card-title">Active Workshop</span>
+        <p class="card-desc">Real-time view of all Tuk Tuks currently in the garage.</p>
     </a>
 
     <a href="staff-management.html" class="menu-card" style="border-color:#2980b9">
         <span class="card-icon">👥</span>
         <span class="card-title">Staff Management</span>
-        <p class="card-desc">Manage your 12 employees, update PINs, and track performance.</p>
+        <p class="card-desc">Control access for your 6 mechanics and 4 PDI staff.</p>
     </a>
 
-    <a href="report-dashboard.html" class="menu-card" style="border-color:#8e44ad">
-        <span class="card-icon">📊</span>
-        <span class="card-title">Report Dashboard</span>
-        <p class="card-desc">Daily income, job completion rates, and parts usage history.</p>
+    <a href="warehouse-parts.html" class="menu-card" style="border-color:#e67e22">
+        <span id="pending-parts-alert" class="stat-badge">0 REQ</span>
+        <span class="card-icon">🔩</span>
+        <span class="card-title">Warehouse Monitor</span>
+        <p class="card-desc">Check if parts are being issued quickly to mechanics.</p>
     </a>
-
-    <a href="reception-input.html" class="menu-card" style="border-color:#f1c40f">
-        <span class="card-icon">🚕</span>
-        <span class="card-title">Active Workshop</span>
-        <p class="card-desc">View all Tuk Tuks currently in repair or waiting for PDI.</p>
-    </a>
-</div>
-
-<div style="text-align:center; margin-top:40px;">
-    <button onclick="logout()" style="background:none; border:1px solid #7f8c8d; color:#7f8c8d; padding:10px 20px; border-radius:5px; cursor:pointer;">Secure Logout</button>
 </div>
 
 <script>
-    // Security Check: If not logged in as GM, kick them out
+    const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
+    const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
+    const _s = supabase.createClient(u, k);
+
+    // 1. Security & Identity
     if(localStorage.getItem('lsm_role') !== 'GM') window.location.href = 'index.html';
-    
+    document.getElementById('gm-name-display').innerText = localStorage.getItem('lsm_user_name');
+
+    async function loadLiveStats() {
+        // A. Check Low Stock (Threshold < 5)
+        const { data: inv } = await _s.from('inventory').select('stock_quantity, unit_price');
+        if(inv) {
+            const lowItems = inv.filter(i => i.stock_quantity < 5).length;
+            const totalVal = inv.reduce((acc, curr) => acc + (curr.stock_quantity * curr.unit_price), 0);
+            
+            if(lowItems > 0) {
+                document.getElementById('low-stock-alert').innerText = lowItems + " LOW";
+                document.getElementById('low-stock-alert').style.display = 'block';
+            }
+            document.getElementById('total-inv-value').innerText = "$" + totalVal.toLocaleString();
+        }
+
+        // B. Check Active Jobs
+        const { count: jobCount } = await _s.from('job_cards')
+            .select('*', { count: 'exact', head: true }).eq('current_status', 'IN_REPAIR');
+        
+        if(jobCount > 0) {
+            document.getElementById('active-jobs-alert').innerText = jobCount + " ACTIVE";
+            document.getElementById('active-jobs-alert').style.display = 'block';
+        }
+
+        // C. Check Pending Part Requests
+        const { count: reqCount } = await _s.from('part_requests')
+            .select('*', { count: 'exact', head: true }).eq('status', 'PENDING');
+
+        if(reqCount > 0) {
+            document.getElementById('pending-parts-alert').innerText = reqCount + " NEW REQ";
+            document.getElementById('pending-parts-alert').style.display = 'block';
+        }
+    }
+
     function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+
+    loadLiveStats();
+    setInterval(loadLiveStats, 30000); // Refresh stats every 30 seconds
 </script>
 </body></html>

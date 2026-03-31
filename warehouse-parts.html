@@ -3,22 +3,23 @@
     body{font-family:'Segoe UI',sans-serif;background:#2c3e50;color:#eee;margin:0;padding:15px}
     .header{background:#1a1a1a;padding:15px;border-radius:10px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #f1c40f}
     .request-card{background:#fff;color:#333;border-radius:10px;padding:15px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;border-left:8px solid #f1c40f}
-    .part-info b{font-size:18px;display:block}
-    .part-info span{font-size:12px;color:#7f8c8d}
+    .part-info b{font-size:18px;display:block;color:#2c3e50}
+    .part-info span{font-size:11px;color:#7f8c8d;text-transform:uppercase}
     .btn-issue{background:#27ae60;color:white;border:none;padding:12px 20px;border-radius:6px;font-weight:bold;cursor:pointer}
-    .logout-btn{background:transparent;border:1px solid #f1c40f;color:#f1c40f;padding:5px 10px;border-radius:5px;font-size:12px}
+    .btn-issue:disabled{background:#bdc3c7;cursor:not-allowed}
+    .logout-btn{font-size:12px;color:#f1c40f;cursor:pointer;text-decoration:none;border:1px solid #f1c40f;padding:4px 8px;border-radius:4px}
 </style></head><body>
 
 <div class="header">
     <div>
-        <span style="font-size:10px;color:#888;display:block">WAREHOUSE STAFF</span>
+        <span style="font-size:10px;color:#888;display:block">WAREHOUSE DUTY</span>
         <b id="user-display">...</b>
     </div>
-    <button class="logout-btn" onclick="logout()">LOGOUT</button>
+    <a href="#" class="logout-btn" onclick="logout()">LOGOUT</a>
 </div>
 
 <h2 style="font-size:16px;color:#bdc3c7">PENDING PART REQUESTS</h2>
-<div id="request-list">Waiting for mechanics to request parts...</div>
+<div id="request-list">Checking for requests...</div>
 
 <script>
     const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
@@ -38,7 +39,7 @@
         const list = document.getElementById('request-list');
         list.innerHTML = "";
 
-        if(data.length === 0) {
+        if(!data || data.length === 0) {
             list.innerHTML = "<div style='text-align:center;padding:50px;color:#7f8c8d'>No open requests. 📭</div>";
             return;
         }
@@ -48,29 +49,59 @@
             div.className = 'request-card';
             div.innerHTML = `
                 <div class="part-info">
-                    <span>JOB: ${req.job_cards.vehicle_plate} | FROM: ${req.requested_by}</span>
-                    <b>${req.quantity}x ${req.part_name}</b>
+                    <span>PLATE: ${req.job_cards?.vehicle_plate || 'N/A'} | REQ BY: ${req.requested_by}</span>
+                    <b>[ID: ${req.part_id}] ${req.part_name || 'Part Request'}</b>
+                    <span style="color:#2980b9">Qty Requested: ${req.quantity}</span>
                 </div>
-                <button class="btn-issue" onclick="issuePart(${req.id})">ISSUE PART</button>
+                <button class="btn-issue" id="btn-${req.id}" onclick="issuePart(${req.id}, '${req.part_id}', ${req.quantity})">ISSUE</button>
             `;
             list.appendChild(div);
         });
     }
 
-    async function issuePart(reqId) {
-        const { error } = await _s.from('part_requests')
-            .update({ status: 'ISSUED', issued_by: staffName })
-            .eq('id', reqId);
+    async function issuePart(reqId, partId, qty) {
+        const btn = document.getElementById(`btn-${reqId}`);
+        btn.disabled = true;
+        btn.innerText = "PROCESSING...";
 
-        if(!error) {
-            alert("Part Recorded as Issued!");
+        // 1. Get current stock levels
+        const { data: partData } = await _s.from('inventory')
+            .select('stock_quantity, part_name')
+            .eq('part_id', partId)
+            .single();
+
+        if (!partData) {
+            alert("Error: Part ID not found in inventory!");
+            btn.disabled = false;
+            btn.innerText = "ISSUE";
+            return;
+        }
+
+        if (partData.stock_quantity < qty) {
+            alert(`Insufficient Stock! Only ${partData.stock_quantity} left.`);
+            btn.disabled = false;
+            btn.innerText = "ISSUE";
+            return;
+        }
+
+        // 2. Update Status and Deduct Stock
+        const newStock = partData.stock_quantity - qty;
+        
+        const { error: updateReq } = await _s.from('part_requests').update({ status: 'ISSUED', issued_by: staffName }).eq('id', reqId);
+        const { error: updateInv } = await _s.from('inventory').update({ stock_quantity: newStock }).eq('part_id', partId);
+
+        if(!updateReq && !updateInv) {
+            alert(`✅ Issued ${qty}x ${partData.part_name}. New Stock: ${newStock}`);
             loadRequests();
+        } else {
+            alert("Database Error during issuance.");
+            btn.disabled = false;
         }
     }
 
     function logout() { localStorage.clear(); window.location.href = 'index.html'; }
 
     loadRequests();
-    setInterval(loadRequests, 15000); // Check for new mechanic requests every 15 seconds
+    setInterval(loadRequests, 10000); // Check every 10 seconds
 </script>
 </body></html>

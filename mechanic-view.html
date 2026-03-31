@@ -13,12 +13,18 @@
         .symptoms-box{background:#1a1a1a;padding:10px;border-radius:6px;font-size:13px;color:#bbb;margin:10px 0}
         .btn-done{width:100%;padding:15px;background:#27ae60;color:white;border:none;border-radius:8px;font-weight:bold;font-size:16px;cursor:pointer;margin-top:10px}
         .btn-scan{width:100%;padding:12px;background:#f1c40f;color:#000;border:none;border-radius:8px;font-weight:bold;font-size:14px;cursor:pointer;margin-top:5px;display:flex;align-items:center;justify-content:center;gap:8px}
-        .logout-btn{background:transparent;border:1px solid #27ae60;color:#27ae60;padding:5px 10px;border-radius:5px;font-size:12px}
+        
+        /* Basket Styles */
+        .basket-container { margin-top: 15px; background: #1a1a1a; border: 1px dashed #f1c40f; border-radius: 8px; overflow: hidden; display: none; }
+        .basket-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #333; font-size: 13px; }
+        .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer; }
+        .btn-send-all { width: 100%; background: #27ae60; color: white; border: none; padding: 12px; font-weight: bold; cursor: pointer; }
         
         /* Scanner Overlay */
         #scanner-container { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:1000; flex-direction:column; align-items:center; justify-content:center; }
         #reader { width: 300px; background: white; border-radius: 10px; overflow: hidden; }
         .close-scan { margin-top: 20px; padding: 10px 20px; background: #e74c3c; color: white; border: none; border-radius: 5px; font-weight: bold; }
+        .logout-btn{background:transparent;border:1px solid #27ae60;color:#27ae60;padding:5px 10px;border-radius:5px;font-size:12px}
     </style>
 </head><body>
 
@@ -36,7 +42,7 @@
 </div>
 
 <h2 style="font-size:16px;color:#888;margin-left:5px">MY ACTIVE REPAIRS</h2>
-<div id="my-jobs">Loading your assignments...</div>
+<div id="my-jobs">Loading assignments...</div>
 
 <script>
     const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
@@ -49,19 +55,18 @@
 
     let html5QrCode;
     let activeJobId = null;
+    let partBasket = []; // Temporary storage for scanned parts
 
     async function loadMyJobs() {
-        const { data, error } = await _s.from('job_cards')
-            .select('*')
-            .eq('assigned_mechanic_id', currentMech)
-            .eq('current_status', 'IN_REPAIR')
-            .order('id', { ascending: true });
+        const { data } = await _s.from('job_cards')
+            .select('*').eq('assigned_mechanic_id', currentMech)
+            .eq('current_status', 'IN_REPAIR').order('id', { ascending: true });
 
         const list = document.getElementById('my-jobs');
         list.innerHTML = "";
 
         if(!data || data.length === 0) {
-            list.innerHTML = "<div style='text-align:center;padding:50px;color:#666'>No vehicles assigned. ☕</div>";
+            list.innerHTML = "<div style='text-align:center;padding:50px;color:#666'>No assignments. ☕</div>";
             return;
         }
 
@@ -73,99 +78,104 @@
                 <span class="plate-no">${job.vehicle_plate}</span>
                 <div class="symptoms-box"><b>Symptoms:</b><br>${job.symptoms}</div>
                 
-                <button class="btn-scan" onclick="startScanner(${job.id})">
-                    📷 SCAN PART BARCODE
-                </button>
+                <button class="btn-scan" onclick="startScanner(${job.id})">📷 SCAN PART BARCODE</button>
                 
-                <button class="btn-done" onclick="finishRepair(${job.id})">
-                    ✅ REPAIR FINISHED
-                </button>
+                <div id="basket-display-${job.id}" class="basket-container"></div>
+                
+                <button class="btn-done" onclick="finishRepair(${job.id})">✅ REPAIR FINISHED</button>
             `;
             list.appendChild(card);
         });
     }
 
-    // --- SCANNER LOGIC ---
     function startScanner(jobId) {
         activeJobId = jobId;
         document.getElementById('scanner-container').style.display = 'flex';
-        
         html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start(
-            { facingMode: "environment" }, 
-            { fps: 10, qrbox: { width: 250, height: 250 } },
-            (decodedText) => {
-                stopScanner();
-                requestScannedPart(decodedText);
-            },
-            (errorMessage) => { /* Ignore constant scanning noise */ }
-        ).catch(err => {
-            alert("Camera Error: " + err);
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
             stopScanner();
+            addToBasket(text);
         });
     }
 
     function stopScanner() {
-        if(html5QrCode) {
-            html5QrCode.stop().then(() => {
-                document.getElementById('scanner-container').style.display = 'none';
-            });
+        if(html5QrCode) html5QrCode.stop().then(() => {
+            document.getElementById('scanner-container').style.display = 'none';
+        });
+    }
+
+    async function addToBasket(scannedId) {
+        const cleanId = scannedId.toString().replace(/[^a-zA-Z0-9]/g, '').trim();
+        
+        const { data: partInfo } = await _s.from('inventory')
+            .select('part_name').ilike('part_id', `%${cleanId}%`).maybeSingle();
+
+        const name = partInfo ? partInfo.part_name : "Unknown Part (" + cleanId + ")";
+        const qty = prompt(`Found: ${name}\nHow many do you need?`, "1");
+
+        if(qty && !isNaN(qty)) {
+            partBasket.push({ id: cleanId, name: name, qty: parseInt(qty) });
+            renderBasket();
         }
     }
 
-async function requestScannedPart(scannedText) {
-    // 1. Clean the text - Remove everything except letters and numbers
-    const cleanId = scannedText.toString().replace(/[^a-zA-Z0-9]/g, '').trim();
-    
-    console.log("Searching for Part ID:", cleanId);
+    function renderBasket() {
+        const basketDiv = document.getElementById('basket-display-' + activeJobId);
+        if(!basketDiv) return;
 
-    // 2. SEARCH: Try a standard match first, then a fuzzy match
-    let { data: partInfo, error } = await _s.from('inventory')
-        .select('part_name')
-        .eq('part_id', cleanId)
-        .maybeSingle();
+        if(partBasket.length === 0) {
+            basketDiv.style.display = "none";
+            return;
+        }
 
-    // 3. FUZZY FALLBACK: If standard search fails, try a partial match
-    if (!partInfo) {
-        console.log("Standard search failed, trying partial match...");
-        const fuzzy = await _s.from('inventory')
-            .select('part_name')
-            .ilike('part_id', `%${cleanId}%`)
-            .limit(1)
-            .maybeSingle();
-        partInfo = fuzzy.data;
+        basketDiv.style.display = "block";
+        let html = `<div style="padding:10px; font-size:12px; color:#f1c40f; font-weight:bold; border-bottom:1px solid #333">🛒 PENDING BASKET:</div>`;
+        
+        partBasket.forEach((item, index) => {
+            html += `
+                <div class="basket-item">
+                    <span><b>${item.qty}x</b> ${item.name}</span>
+                    <button class="btn-remove" onclick="removeFromBasket(${index})">CANCEL</button>
+                </div>`;
+        });
+
+        html += `<button class="btn-send-all" onclick="sendBatchRequest()">🚀 SEND TO WAREHOUSE</button>`;
+        basketDiv.innerHTML = html;
     }
 
-    // 4. Handle Result
-    const displayPart = (partInfo && partInfo.part_name) ? partInfo.part_name : "Unknown Part (" + cleanId + ")";
-    
-    const qty = prompt(`Found: ${displayPart}\nHow many do you need?`, "1");
-    if (!qty || isNaN(qty)) return;
-
-    // 5. Send Request
-    const { error: insertError } = await _s.from('part_requests').insert([{
-        job_id: activeJobId,
-        part_id: cleanId,
-        part_name: (partInfo && partInfo.part_name) ? partInfo.part_name : "Manual Request",
-        quantity: parseInt(qty),
-        requested_by: currentMech,
-        status: 'PENDING'
-    }]);
-
-    if (!insertError) {
-        alert("✅ Request for " + displayPart + " sent to Warehouse!");
-    } else {
-        alert("Error sending request: " + insertError.message);
+    function removeFromBasket(index) {
+        partBasket.splice(index, 1);
+        renderBasket();
     }
-}
+
+    async function sendBatchRequest() {
+        if(!confirm("Send " + partBasket.length + " items?")) return;
+
+        const inserts = partBasket.map(item => ({
+            job_id: activeJobId,
+            part_id: item.id,
+            part_name: item.name,
+            quantity: item.qty,
+            requested_by: currentMech,
+            status: 'PENDING'
+        }));
+
+        const { error } = await _s.from('part_requests').insert(inserts);
+
+        if(!error) {
+            alert("✅ Sent to Warehouse!");
+            partBasket = [];
+            document.getElementById('basket-display-' + activeJobId).style.display = "none";
+        }
+    }
+
     async function finishRepair(jobId) {
-        if(!confirm("Move this vehicle to PDI?")) return;
+        if(partBasket.length > 0) return alert("Please send or clear your basket first!");
         const { error } = await _s.from('job_cards').update({ current_status: 'PDI' }).eq('id', jobId);
-        if(!error) { alert("Vehicle sent to PDI."); loadMyJobs(); }
+        if(!error) { alert("Sent to PDI."); loadMyJobs(); }
     }
 
     function logout() { localStorage.clear(); window.location.href = 'index.html'; }
-
     loadMyJobs();
 </script>
 </body></html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSM - STAFF MANAGEMENT</title>
+    <style>
+        body{font-family:'Segoe UI',sans-serif; background:#f4f7f6; margin:0; padding:20px;}
+        .container{max-width:900px; margin:0 auto;}
+        .header-box{background:#2980b9; color:white; padding:20px; border-radius:12px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;}
+        .staff-table{width:100%; background:white; border-radius:12px; overflow:hidden; box-shadow:0 4px 15px rgba(0,0,0,0.05); border-collapse:collapse;}
+        th{background:#f8f9fa; color:#7f8c8d; padding:15px; text-align:left; font-size:12px; text-transform:uppercase;}
+        td{padding:15px; border-bottom:1px solid #eee; font-size:14px; color:#2c3e50;}
+        .role-badge{padding:4px 10px; border-radius:20px; font-size:11px; font-weight:bold; color:white;}
+        .role-GM{background:#1a2a3a;}
+        .role-MECHANIC{background:#f1c40f; color:#000;}
+        .role-PDI{background:#e67e22;}
+        .role-RECEPTIONIST{background:#3498db;}
+        .role-WAREHOUSE{background:#9b59b6;}
+        
+        .btn-action{padding:6px 12px; border-radius:5px; border:1px solid #ddd; background:white; cursor:pointer; font-size:12px;}
+        .btn-action:hover{background:#f8f9fa; border-color:#2980b9; color:#2980b9;}
+        .btn-add{background:#27ae60; color:white; border:none; padding:10px 20px; border-radius:8px; font-weight:bold; cursor:pointer;}
+        
+        /* Modal for adding/editing */
+        #staff-modal{display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:100;}
+        .modal-content{background:white; padding:30px; border-radius:15px; width:350px;}
+        .modal-content input, .modal-content select{width:100%; padding:10px; margin:10px 0; border:1px solid #ddd; border-radius:5px; box-sizing:border-box;}
+    </style>
+</head><body>
+
+<div class="container">
+    <div style="margin-bottom:15px;">
+        <a href="gm-menu.html" style="text-decoration:none; color:#2980b9; font-weight:bold;">⬅️ BACK TO GM MENU</a>
+    </div>
+
+    <div class="header-box">
+        <div>
+            <h1 style="margin:0; font-size:24px;">👥 Staff Management</h1>
+            <p style="margin:5px 0 0; opacity:0.8;">Manage roles and security for your 12 employees</p>
+        </div>
+        <button class="btn-add" onclick="openStaffModal()">+ ADD NEW STAFF</button>
+    </div>
+
+    <table class="staff-table">
+        <thead>
+            <tr>
+                <th>Employee Name</th>
+                <th>System Role</th>
+                <th>Current PIN</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="staff-list-body">
+            </tbody>
+    </table>
+</div>
+
+<div id="staff-modal">
+    <div class="modal-content">
+        <h3 id="modal-title">Register New Employee</h3>
+        <input type="text" id="staff-name" placeholder="Full Name">
+        <select id="staff-role">
+            <option value="GM">GENERAL MANAGER</option>
+            <option value="RECEPTIONIST">RECEPTIONIST</option>
+            <option value="MECHANIC">MECHANIC</option>
+            <option value="PDI">PDI STAFF</option>
+            <option value="WAREHOUSE">WAREHOUSE</option>
+        </select>
+        <input type="password" id="staff-pin" placeholder="Set 4-Digit PIN" maxlength="4">
+        
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button onclick="saveStaff()" style="flex:2; background:#2980b9; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer;">SAVE EMPLOYEE</button>
+            <button onclick="closeStaffModal()" style="flex:1; background:#eee; border:none; padding:12px; border-radius:8px; cursor:pointer;">CANCEL</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
+    const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
+    const _s = supabase.createClient(u, k);
+
+    async function loadStaff() {
+        const { data, error } = await _s.from('staff').select('*').order('role');
+        const body = document.getElementById('staff-list-body');
+        body.innerHTML = "";
+
+        data.forEach(person => {
+            body.innerHTML += `
+                <tr>
+                    <td><b>${person.name}</b></td>
+                    <td><span class="role-badge role-${person.role}">${person.role}</span></td>
+                    <td><span style="letter-spacing:2px; color:#95a5a6;">****</span></td>
+                    <td>
+                        <button class="btn-action" onclick="resetPin('${person.id}', '${person.name}')">Reset PIN</button>
+                        <button class="btn-action" style="color:#e74c3c" onclick="deleteStaff('${person.id}', '${person.name}')">Delete</button>
+                    </td>
+                </tr>`;
+        });
+    }
+
+    function openStaffModal() { document.getElementById('staff-modal').style.display = 'flex'; }
+    function closeStaffModal() { document.getElementById('staff-modal').style.display = 'none'; }
+
+    async function saveStaff() {
+        const name = document.getElementById('staff-name').value;
+        const role = document.getElementById('staff-role').value;
+        const pin = document.getElementById('staff-pin').value;
+
+        if(!name || !pin) return alert("Please enter name and PIN");
+
+        const { error } = await _s.from('staff').insert([{ name, role, pin }]);
+        
+        if(!error) {
+            alert("New staff added successfully!");
+            closeStaffModal();
+            loadStaff();
+        } else {
+            alert("Error: " + error.message);
+        }
+    }
+
+    async function resetPin(id, name) {
+        const newPin = prompt(`Enter new 4-digit PIN for ${name}:`);
+        if(newPin && newPin.length === 4) {
+            const { error } = await _s.from('staff').update({ pin: newPin }).eq('id', id);
+            if(!error) alert("PIN updated successfully.");
+        } else {
+            alert("Invalid PIN. Must be 4 digits.");
+        }
+    }
+
+    async function deleteStaff(id, name) {
+        if(confirm(`Are you sure you want to remove ${name} from the system?`)) {
+            const { error } = await _s.from('staff').delete().eq('id', id);
+            if(!error) loadStaff();
+        }
+    }
+
+    loadStaff();
+</script>
+</body></html>

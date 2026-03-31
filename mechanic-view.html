@@ -114,27 +114,36 @@
     }
 
 async function requestScannedPart(scannedText) {
-    // 1. Clean the text (remove spaces, force to string)
-    const cleanId = scannedText.toString().trim();
+    // 1. Clean the text - Remove everything except letters and numbers
+    const cleanId = scannedText.toString().replace(/[^a-zA-Z0-9]/g, '').trim();
     
     console.log("Searching for Part ID:", cleanId);
 
-    // 2. Search for the part
-    const { data: partInfo, error: findError } = await _s.from('inventory')
+    // 2. SEARCH: Try a standard match first, then a fuzzy match
+    let { data: partInfo, error } = await _s.from('inventory')
         .select('part_name')
-        .eq('part_id', cleanId) // Search using the cleaned ID
+        .eq('part_id', cleanId)
         .maybeSingle();
 
-    if (findError) console.error("Search Error:", findError);
+    // 3. FUZZY FALLBACK: If standard search fails, try a partial match
+    if (!partInfo) {
+        console.log("Standard search failed, trying partial match...");
+        const fuzzy = await _s.from('inventory')
+            .select('part_name')
+            .ilike('part_id', `%${cleanId}%`)
+            .limit(1)
+            .maybeSingle();
+        partInfo = fuzzy.data;
+    }
 
-    // 3. Handle the result
+    // 4. Handle Result
     const displayPart = (partInfo && partInfo.part_name) ? partInfo.part_name : "Unknown Part (" + cleanId + ")";
     
     const qty = prompt(`Found: ${displayPart}\nHow many do you need?`, "1");
     if (!qty || isNaN(qty)) return;
 
-    // 4. Send the request
-    const { error } = await _s.from('part_requests').insert([{
+    // 5. Send Request
+    const { error: insertError } = await _s.from('part_requests').insert([{
         job_id: activeJobId,
         part_id: cleanId,
         part_name: (partInfo && partInfo.part_name) ? partInfo.part_name : "Manual Request",
@@ -143,13 +152,12 @@ async function requestScannedPart(scannedText) {
         status: 'PENDING'
     }]);
 
-    if (!error) {
+    if (!insertError) {
         alert("✅ Request for " + displayPart + " sent to Warehouse!");
     } else {
-        alert("Error sending request: " + error.message);
+        alert("Error sending request: " + insertError.message);
     }
 }
-
     async function finishRepair(jobId) {
         if(!confirm("Move this vehicle to PDI?")) return;
         const { error } = await _s.from('job_cards').update({ current_status: 'PDI' }).eq('id', jobId);

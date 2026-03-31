@@ -1,42 +1,67 @@
 <!DOCTYPE html>
-<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>LSM MECHANIC - MY JOBS</title><style>body{font-family:'Segoe UI',sans-serif;background:#f4f7f6;margin:0;padding:15px} .header{background:#1a1a1a;color:#ff4500;padding:15px;border-radius:10px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center} .job-card{background:#fff;border-radius:12px;padding:20px;margin-bottom:15px;box-shadow:0 4px 12px rgba(0,0,0,0.08);border-top:5px solid #27ae60} h2{margin:0;font-size:22px;color:#333} .symptoms{background:#fff8e1;padding:10px;border-radius:6px;margin:10px 0;font-size:14px;color:#856404;border:1px solid #ffeeba} .btn-complete{width:100%;padding:15px;background:#27ae60;color:white;border:none;border-radius:8px;font-weight:bold;font-size:16px;cursor:pointer;margin-top:10px} .logout-btn{background:transparent;color:#ff4500;border:1px solid #ff4500;padding:5px 10px;border-radius:5px;font-size:12px;cursor:pointer}</style></head><body>
+<html lang="en"><head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSM - MECHANIC WORKSHOP</title>
+    <style>
+        body{font-family:'Segoe UI',sans-serif;background:#1e1e1e;color:#eee;margin:0;padding:15px}
+        .header{background:#333;padding:15px;border-radius:10px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #27ae60}
+        .job-card{background:#2d2d2d;border-radius:12px;padding:20px;margin-bottom:15px;box-shadow:0 4px 10px rgba(0,0,0,0.3);border-left:6px solid #27ae60}
+        .plate-no{font-size:24px;font-weight:bold;color:#fff;display:block;margin-bottom:5px}
+        .symptoms-box{background:#1a1a1a;padding:10px;border-radius:6px;font-size:13px;color:#bbb;margin:10px 0}
+        .btn-done{width:100%;padding:15px;background:#27ae60;color:white;border:none;border-radius:8px;font-weight:bold;font-size:16px;cursor:pointer;margin-top:10px}
+        .btn-scan{width:100%;padding:12px;background:#f1c40f;color:#000;border:none;border-radius:8px;font-weight:bold;font-size:14px;cursor:pointer;margin-top:5px;display:flex;align-items:center;justify-content:center;gap:8px}
+        .logout-btn{background:transparent;border:1px solid #27ae60;color:#27ae60;padding:5px 10px;border-radius:5px;font-size:12px}
+        
+        /* Scanner Overlay */
+        #scanner-container { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:1000; flex-direction:column; align-items:center; justify-content:center; }
+        #reader { width: 300px; background: white; border-radius: 10px; overflow: hidden; }
+        .close-scan { margin-top: 20px; padding: 10px 20px; background: #e74c3c; color: white; border: none; border-radius: 5px; font-weight: bold; }
+    </style>
+</head><body>
+
+<div id="scanner-container">
+    <div id="reader"></div>
+    <button class="close-scan" onclick="stopScanner()">❌ CANCEL SCAN</button>
+</div>
 
 <div class="header">
     <div>
-        <span style="display:block;font-size:10px;color:#888;text-transform:uppercase">Active Mechanic</span>
-        <span id="display-name" style="font-weight:bold;font-size:18px">...</span>
+        <span style="font-size:10px;color:#888;display:block">MECHANIC ON DUTY</span>
+        <b id="mech-name" style="font-size:18px">...</b>
     </div>
     <button class="logout-btn" onclick="logout()">LOGOUT</button>
 </div>
 
-<div id="work-list">Loading your tools...</div>
+<h2 style="font-size:16px;color:#888;margin-left:5px">MY ACTIVE REPAIRS</h2>
+<div id="my-jobs">Loading your assignments...</div>
 
 <script>
     const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
     const _s = supabase.createClient(u, k);
 
-    // Get the name from memory
-    const myName = localStorage.getItem('lsm_user_name');
+    const currentMech = localStorage.getItem('lsm_user_name');
+    if(!currentMech) window.location.href = 'index.html';
+    document.getElementById('mech-name').innerText = currentMech;
 
-    async function loadMyWork() {
-        if(!myName) {
-            window.location.href = 'index.html'; // Send back to login if name is missing
-            return;
-        }
-        
-        document.getElementById('display-name').innerText = myName;
-        const list = document.getElementById('work-list');
+    let html5QrCode;
+    let activeJobId = null;
 
+    async function loadMyJobs() {
         const { data, error } = await _s.from('job_cards')
             .select('*')
-            .eq('assigned_mechanic_id', myName)
-            .eq('current_status', 'IN_REPAIR');
+            .eq('assigned_mechanic_id', currentMech)
+            .eq('current_status', 'IN_REPAIR')
+            .order('id', { ascending: true });
 
+        const list = document.getElementById('my-jobs');
         list.innerHTML = "";
 
-        if(data && data.length === 0) {
-            list.innerHTML = "<div style='text-align:center;padding:50px;color:#999'>No active repairs for you, " + myName + ". ☕</div>";
+        if(!data || data.length === 0) {
+            list.innerHTML = "<div style='text-align:center;padding:50px;color:#666'>No vehicles assigned. ☕</div>";
             return;
         }
 
@@ -44,29 +69,83 @@
             const card = document.createElement('div');
             card.className = 'job-card';
             card.innerHTML = `
-                <div style="font-size:12px;color:#666">JOB #${job.id}</div>
-                <h2>${job.vehicle_plate}</h2>
-                <div class="symptoms"><b>Reported Issues:</b><br>${job.symptoms}</div>
-                <button class="btn-complete" onclick="finishJob(${job.id})">DONE - SEND TO PDI</button>
+                <span style="font-size:10px;background:#444;padding:3px 8px;border-radius:4px">CORE ${job.core_type}</span>
+                <span class="plate-no">${job.vehicle_plate}</span>
+                <div class="symptoms-box"><b>Symptoms:</b><br>${job.symptoms}</div>
+                
+                <button class="btn-scan" onclick="startScanner(${job.id})">
+                    📷 SCAN PART BARCODE
+                </button>
+                
+                <button class="btn-done" onclick="finishRepair(${job.id})">
+                    ✅ REPAIR FINISHED
+                </button>
             `;
             list.appendChild(card);
         });
     }
 
-    async function finishJob(jobId) {
-        if(!confirm("Is the repair finished?")) return;
-        const { error } = await _s.from('job_cards').update({ current_status: 'PDI' }).eq('id', jobId);
-        if(!error) {
-            alert("Vehicle moved to PDI!");
-            loadMyWork();
+    // --- SCANNER LOGIC ---
+    function startScanner(jobId) {
+        activeJobId = jobId;
+        document.getElementById('scanner-container').style.display = 'flex';
+        
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start(
+            { facingMode: "environment" }, 
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText) => {
+                stopScanner();
+                requestScannedPart(decodedText);
+            },
+            (errorMessage) => { /* Ignore constant scanning noise */ }
+        ).catch(err => {
+            alert("Camera Error: " + err);
+            stopScanner();
+        });
+    }
+
+    function stopScanner() {
+        if(html5QrCode) {
+            html5QrCode.stop().then(() => {
+                document.getElementById('scanner-container').style.display = 'none';
+            });
         }
     }
 
-    function logout() {
-        localStorage.clear();
-        window.location.href = 'index.html';
+    async function requestScannedPart(partId) {
+        // First check if the part exists in inventory
+        const { data: partInfo, error: findError } = await _s.from('inventory')
+            .select('part_name')
+            .eq('part_id', partId)
+            .single();
+
+        const displayPart = partInfo ? partInfo.part_name : "Unknown Part ("+partId+")";
+        const qty = prompt(`Found: ${displayPart}\nHow many do you need?`, "1");
+
+        if(!qty || isNaN(qty)) return;
+
+        const { error } = await _s.from('part_requests').insert([{
+            job_id: activeJobId,
+            part_id: partId,
+            part_name: partInfo ? partInfo.part_name : "Manual Request",
+            quantity: parseInt(qty),
+            requested_by: currentMech,
+            status: 'PENDING'
+        }]);
+
+        if(!error) alert("✅ Request for " + displayPart + " sent to Warehouse!");
+        else alert("Error sending request: " + error.message);
     }
 
-    window.onload = loadMyWork;
+    async function finishRepair(jobId) {
+        if(!confirm("Move this vehicle to PDI?")) return;
+        const { error } = await _s.from('job_cards').update({ current_status: 'PDI' }).eq('id', jobId);
+        if(!error) { alert("Vehicle sent to PDI."); loadMyJobs(); }
+    }
+
+    function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+
+    loadMyJobs();
 </script>
 </body></html>

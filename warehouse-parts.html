@@ -1,25 +1,36 @@
 <!DOCTYPE html>
-<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>LSM - WAREHOUSE</title><style>
-    body{font-family:'Segoe UI',sans-serif;background:#2c3e50;color:#eee;margin:0;padding:15px}
-    .header{background:#1a1a1a;padding:15px;border-radius:10px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #f1c40f}
-    .request-card{background:#fff;color:#333;border-radius:10px;padding:15px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;border-left:8px solid #f1c40f}
-    .part-info b{font-size:18px;display:block;color:#2c3e50}
-    .part-info span{font-size:11px;color:#7f8c8d;text-transform:uppercase}
-    .btn-issue{background:#27ae60;color:white;border:none;padding:12px 20px;border-radius:6px;font-weight:bold;cursor:pointer}
-    .btn-issue:disabled{background:#bdc3c7;cursor:not-allowed}
-    .logout-btn{font-size:12px;color:#f1c40f;cursor:pointer;text-decoration:none;border:1px solid #f1c40f;padding:4px 8px;border-radius:4px}
-</style></head><body>
+<html lang="en"><head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSM - WAREHOUSE DISPATCH</title>
+    <style>
+        body{font-family:'Segoe UI',sans-serif;background:#1a1a1a;color:#eee;margin:0;padding:15px}
+        .header{background:#2c3e50;padding:15px;border-radius:10px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #f1c40f}
+        .group-card{background:#fff;color:#333;border-radius:12px;margin-bottom:20px;overflow:hidden;box-shadow:0 4px 15px rgba(0,0,0,0.3)}
+        .group-header{background:#f1c40f;padding:12px 15px;display:flex;justify-content:space-between;align-items:center;font-weight:bold}
+        .plate-badge{background:#333;color:#f1c40f;padding:4px 10px;border-radius:5px;font-size:18px}
+        .part-row{padding:10px 15px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
+        .part-row:last-child{border-bottom:none}
+        .part-id{font-size:10px;color:#7f8c8d;display:block}
+        .qty-pill{background:#3498db;color:white;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:bold}
+        .footer-action{background:#f9f9f9;padding:15px;text-align:right;border-top:2px solid #eee}
+        .btn-issue-all{background:#27ae60;color:white;border:none;padding:12px 25px;border-radius:8px;font-weight:bold;cursor:pointer;font-size:14px}
+        .btn-issue-all:disabled{background:#bdc3c7}
+        .logout-btn{color:#f1c40f;text-decoration:none;border:1px solid #f1c40f;padding:5px 10px;border-radius:5px;font-size:12px}
+    </style>
+</head><body>
 
 <div class="header">
     <div>
-        <span style="font-size:10px;color:#888;display:block">WAREHOUSE DUTY</span>
-        <b id="user-display">...</b>
+        <span style="font-size:10px;color:#bdc3c7;display:block">WAREHOUSE LOGISTICS</span>
+        <b id="user-display" style="font-size:18px">...</b>
     </div>
     <a href="#" class="logout-btn" onclick="logout()">LOGOUT</a>
 </div>
 
-<h2 style="font-size:16px;color:#bdc3c7">PENDING PART REQUESTS</h2>
-<div id="request-list">Checking for requests...</div>
+<h2 style="font-size:16px;color:#888;margin-bottom:15px">PENDING BATCH REQUESTS</h2>
+<div id="batch-list">Checking for requests...</div>
 
 <script>
     const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
@@ -31,77 +42,94 @@
     document.getElementById('user-display').innerText = staffName;
 
     async function loadRequests() {
+        // Fetch pending requests with vehicle plate info
         const { data, error } = await _s.from('part_requests')
             .select('*, job_cards(vehicle_plate)')
             .eq('status', 'PENDING')
             .order('request_time', { ascending: true });
 
-        const list = document.getElementById('request-list');
-        list.innerHTML = "";
-
+        const list = document.getElementById('batch-list');
         if(!data || data.length === 0) {
-            list.innerHTML = "<div style='text-align:center;padding:50px;color:#7f8c8d'>No open requests. 📭</div>";
+            list.innerHTML = "<div style='text-align:center;padding:50px;color:#555'>All parts issued! 🏁</div>";
             return;
         }
 
+        // Group the data by Vehicle Plate
+        const groups = {};
         data.forEach(req => {
-            const div = document.createElement('div');
-            div.className = 'request-card';
-            div.innerHTML = `
-                <div class="part-info">
-                    <span>PLATE: ${req.job_cards?.vehicle_plate || 'N/A'} | REQ BY: ${req.requested_by}</span>
-                    <b>[ID: ${req.part_id}] ${req.part_name || 'Part Request'}</b>
-                    <span style="color:#2980b9">Qty Requested: ${req.quantity}</span>
-                </div>
-                <button class="btn-issue" id="btn-${req.id}" onclick="issuePart(${req.id}, '${req.part_id}', ${req.quantity})">ISSUE</button>
-            `;
-            list.appendChild(div);
+            const plate = req.job_cards?.vehicle_plate || "UNASSIGNED";
+            if (!groups[plate]) groups[plate] = [];
+            groups[plate].push(req);
         });
+
+        list.innerHTML = "";
+        for (const plate in groups) {
+            const items = groups[plate];
+            const card = document.createElement('div');
+            card.className = 'group-card';
+            
+            let itemsHtml = '';
+            items.forEach(item => {
+                itemsHtml += `
+                    <div class="part-row">
+                        <div>
+                            <span class="part-id">ID: ${item.part_id}</span>
+                            <b>${item.part_name}</b>
+                        </div>
+                        <span class="qty-pill">Qty: ${item.quantity}</span>
+                    </div>`;
+            });
+
+            card.innerHTML = `
+                <div class="group-header">
+                    <span>PLATE: <span class="plate-badge">${plate}</span></span>
+                    <span style="font-size:12px">Requested by: ${items[0].requested_by}</span>
+                </div>
+                <div class="items-container">${itemsHtml}</div>
+                <div class="footer-action">
+                    <button class="btn-issue-all" id="btn-${plate}" onclick="issueBatch('${plate}', ${JSON.stringify(items).replace(/"/g, '&quot;')})">
+                        ISSUE ALL PARTS
+                    </button>
+                </div>
+            `;
+            list.appendChild(card);
+        }
     }
 
-    async function issuePart(reqId, partId, qty) {
-        const btn = document.getElementById(`btn-${reqId}`);
+    async function issueBatch(plate, items) {
+        const btn = document.getElementById(`btn-${plate}`);
         btn.disabled = true;
-        btn.innerText = "PROCESSING...";
+        btn.innerText = "UPDATING INVENTORY...";
 
-        // 1. Get current stock levels
-        const { data: partData } = await _s.from('inventory')
-            .select('stock_quantity, part_name')
-            .eq('part_id', partId)
-            .single();
+        try {
+            for (const item of items) {
+                // 1. Get current stock
+                const { data: inv } = await _s.from('inventory')
+                    .select('stock_quantity')
+                    .eq('part_id', item.part_id)
+                    .single();
 
-        if (!partData) {
-            alert("Error: Part ID not found in inventory!");
-            btn.disabled = false;
-            btn.innerText = "ISSUE";
-            return;
-        }
-
-        if (partData.stock_quantity < qty) {
-            alert(`Insufficient Stock! Only ${partData.stock_quantity} left.`);
-            btn.disabled = false;
-            btn.innerText = "ISSUE";
-            return;
-        }
-
-        // 2. Update Status and Deduct Stock
-        const newStock = partData.stock_quantity - qty;
-        
-        const { error: updateReq } = await _s.from('part_requests').update({ status: 'ISSUED', issued_by: staffName }).eq('id', reqId);
-        const { error: updateInv } = await _s.from('inventory').update({ stock_quantity: newStock }).eq('part_id', partId);
-
-        if(!updateReq && !updateInv) {
-            alert(`✅ Issued ${qty}x ${partData.part_name}. New Stock: ${newStock}`);
+                if (inv) {
+                    // 2. Deduct Stock
+                    const newQty = inv.stock_quantity - item.quantity;
+                    await _s.from('inventory').update({ stock_quantity: newQty }).eq('part_id', item.part_id);
+                    
+                    // 3. Mark Request as ISSUED
+                    await _s.from('part_requests')
+                        .update({ status: 'ISSUED', issued_by: staffName })
+                        .eq('id', item.id);
+                }
+            }
+            alert(`✅ Success: All parts for ${plate} issued.`);
             loadRequests();
-        } else {
-            alert("Database Error during issuance.");
+        } catch (err) {
+            alert("Error during batch issuance. Please check inventory.");
             btn.disabled = false;
         }
     }
 
     function logout() { localStorage.clear(); window.location.href = 'index.html'; }
-
     loadRequests();
-    setInterval(loadRequests, 10000); // Check every 10 seconds
+    setInterval(loadRequests, 15000); // Refresh every 15 seconds
 </script>
 </body></html>

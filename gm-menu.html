@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta charset="UTF-8"><title>LSM - GM COMMAND CENTER</title>
+    <style>
+        body{font-family:'Segoe UI',sans-serif; background:#f0f2f5; margin:0; padding:20px;}
+        .gm-header{background:#1a2a3a; color:white; padding:30px; border-radius:15px; margin-bottom:25px; text-align:center;}
+        .menu-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:20px;}
+        .menu-card{background:white; padding:25px; border-radius:15px; text-decoration:none; color:#333; 
+                   box-shadow:0 4px 15px rgba(0,0,0,0.05); transition:transform 0.2s; border-top:5px solid #27ae60;}
+        .menu-card:hover{transform:translateY(-5px); box-shadow:0 8px 25px rgba(0,0,0,0.1);}
+        .card-icon{font-size:40px; margin-bottom:15px; display:block;}
+        .card-title{font-size:20px; font-weight:bold; color:#2c3e50;}
+        .card-desc{font-size:14px; color:#7f8c8d; margin-top:8px;}
+        .badge{background:#e74c3c; color:white; padding:2px 8px; border-radius:10px; font-size:12px; float:right;}
+    </style>
+</head><body>
+
+<div class="gm-header">
+    <h1>LSM TAXI & AUTO SHOP</h1>
+    <p>General Manager Dashboard</p>
+</div>
+
+<div class="menu-grid">
+    <a href="inventory-manager.html" class="menu-card" style="border-color:#27ae60">
+        <span class="card-icon">📦</span>
+        <span class="card-title">Inventory Manager</span>
+        <p class="card-desc">Add/Edit parts, track stock levels, and check total inventory value.</p>
+    </a>
+
+    <a href="staff-management.html" class="menu-card" style="border-color:#2980b9">
+        <span class="card-icon">👥</span>
+        <span class="card-title">Staff Management</span>
+        <p class="card-desc">Manage your 12 employees, update PINs, and track performance.</p>
+    </a>
+
+    <a href="report-dashboard.html" class="menu-card" style="border-color:#8e44ad">
+        <span class="card-icon">📊</span>
+        <span class="card-title">Report Dashboard</span>
+        <p class="card-desc">Daily income, job completion rates, and parts usage history.</p>
+    </a>
+
+    <a href="reception-input.html" class="menu-card" style="border-color:#f1c40f">
+        <span class="card-icon">🚕</span>
+        <span class="card-title">Active Workshop</span>
+        <p class="card-desc">View all Tuk Tuks currently in repair or waiting for PDI.</p>
+    </a>
+</div>
+
+<div style="text-align:center; margin-top:40px;">
+    <button onclick="logout()" style="background:none; border:1px solid #7f8c8d; color:#7f8c8d; padding:10px 20px; border-radius:5px; cursor:pointer;">Secure Logout</button>
+</div>
+
+<script>
+    // Security Check: If not logged in as GM, kick them out
+    if(localStorage.getItem('lsm_role') !== 'GM') window.location.href = 'index.html';
+    
+    function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+</script>
+</body></html>

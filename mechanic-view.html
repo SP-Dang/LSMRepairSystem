@@ -113,30 +113,42 @@
         }
     }
 
-    async function requestScannedPart(partId) {
-        // First check if the part exists in inventory
-        const { data: partInfo, error: findError } = await _s.from('inventory')
-            .select('part_name')
-            .eq('part_id', partId)
-            .single();
+async function requestScannedPart(scannedText) {
+    // 1. Clean the text (remove spaces, force to string)
+    const cleanId = scannedText.toString().trim();
+    
+    console.log("Searching for Part ID:", cleanId);
 
-        const displayPart = partInfo ? partInfo.part_name : "Unknown Part ("+partId+")";
-        const qty = prompt(`Found: ${displayPart}\nHow many do you need?`, "1");
+    // 2. Search for the part
+    const { data: partInfo, error: findError } = await _s.from('inventory')
+        .select('part_name')
+        .eq('part_id', cleanId) // Search using the cleaned ID
+        .maybeSingle();
 
-        if(!qty || isNaN(qty)) return;
+    if (findError) console.error("Search Error:", findError);
 
-        const { error } = await _s.from('part_requests').insert([{
-            job_id: activeJobId,
-            part_id: partId,
-            part_name: partInfo ? partInfo.part_name : "Manual Request",
-            quantity: parseInt(qty),
-            requested_by: currentMech,
-            status: 'PENDING'
-        }]);
+    // 3. Handle the result
+    const displayPart = (partInfo && partInfo.part_name) ? partInfo.part_name : "Unknown Part (" + cleanId + ")";
+    
+    const qty = prompt(`Found: ${displayPart}\nHow many do you need?`, "1");
+    if (!qty || isNaN(qty)) return;
 
-        if(!error) alert("✅ Request for " + displayPart + " sent to Warehouse!");
-        else alert("Error sending request: " + error.message);
+    // 4. Send the request
+    const { error } = await _s.from('part_requests').insert([{
+        job_id: activeJobId,
+        part_id: cleanId,
+        part_name: (partInfo && partInfo.part_name) ? partInfo.part_name : "Manual Request",
+        quantity: parseInt(qty),
+        requested_by: currentMech,
+        status: 'PENDING'
+    }]);
+
+    if (!error) {
+        alert("✅ Request for " + displayPart + " sent to Warehouse!");
+    } else {
+        alert("Error sending request: " + error.message);
     }
+}
 
     async function finishRepair(jobId) {
         if(!confirm("Move this vehicle to PDI?")) return;

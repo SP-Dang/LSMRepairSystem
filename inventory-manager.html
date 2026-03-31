@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSM - INVENTORY CONTROL</title>
+    <style>
+        body{font-family:'Segoe UI',sans-serif;background:#f4f7f6;margin:0;padding:20px}
+        .container{max-width:1000px;margin:0 auto}
+        .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:25px}
+        .stat-card{background:white;padding:20px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.05);text-align:center}
+        .stat-card h3{margin:0;font-size:12px;color:#7f8c8d;text-transform:uppercase}
+        .stat-card p{margin:10px 0 0;font-size:24px;font-weight:bold;color:#2c3e50}
+        
+        .inventory-table{width:100%;background:white;border-radius:10px;overflow:hidden;box-shadow:0 4px 15px rgba(0,0,0,0.05);border-collapse:collapse}
+        th{background:#2c3e50;color:white;padding:15px;text-align:left}
+        td{padding:15px;border-bottom:1px solid #eee;font-size:14px}
+        
+        .badge{padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold}
+        .badge-low{background:#ff7675;color:white}
+        .badge-ok{background:#55efc4;color:#00b894}
+        
+        .btn-add{background:#27ae60;color:white;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;font-weight:bold}
+        .btn-edit{background:#3498db;color:white;border:none;padding:5px 10px;border-radius:4px;cursor:pointer}
+        
+        /* Modal Styles */
+        #part-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);justify-content:center;align-items:center}
+        .modal-content{background:white;padding:30px;border-radius:12px;width:400px}
+        .modal-content input{width:95%;padding:10px;margin-bottom:15px;border:1px solid #ddd;border-radius:5px}
+    </style>
+</head><body>
+
+<div class="container">
+    <div class="header">
+        <h1>📦 Inventory Control</h1>
+        <button class="btn-add" onclick="openModal()">+ ADD NEW PART</button>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card"><h3>Total Items</h3><p id="stat-count">0</p></div>
+        <div class="stat-card"><h3>Low Stock Items</h3><p id="stat-low" style="color:#e74c3c">0</p></div>
+        <div class="stat-card"><h3>Inventory Value</h3><p id="stat-value">$0</p></div>
+    </div>
+
+    <table class="inventory-table">
+        <thead>
+            <tr>
+                <th>Part ID</th>
+                <th>Part Name</th>
+                <th>Stock Qty</th>
+                <th>Price/Unit</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="inventory-body"></tbody>
+    </table>
+</div>
+
+<div id="part-modal">
+    <div class="modal-content">
+        <h2 id="modal-title">Add New Part</h2>
+        <input type="text" id="part-id" placeholder="Barcode / ID (e.g. 1001)">
+        <input type="text" id="part-name" placeholder="Part Name">
+        <input type="number" id="part-qty" placeholder="Current Stock">
+        <input type="number" id="part-price" placeholder="Unit Price">
+        <div style="display:flex; gap:10px">
+            <button class="btn-add" style="flex:1" onclick="savePart()">SAVE PART</button>
+            <button onclick="closeModal()" style="flex:1; background:#95a5a6; border:none; color:white; border-radius:5px">CANCEL</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
+    const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
+    const _s = supabase.createClient(u, k);
+
+    let isEditing = false;
+    const LOW_STOCK_THRESHOLD = 5; // Alert if stock is 5 or less
+
+    async function loadInventory() {
+        const { data, error } = await _s.from('inventory').select('*').order('part_name');
+        if(error) return;
+
+        const body = document.getElementById('inventory-body');
+        body.innerHTML = "";
+
+        let totalItems = 0;
+        let lowStockCount = 0;
+        let totalValue = 0;
+
+        data.forEach(item => {
+            totalItems++;
+            const isLow = item.stock_quantity <= LOW_STOCK_THRESHOLD;
+            if(isLow) lowStockCount++;
+            totalValue += (item.stock_quantity * (item.unit_price || 0));
+
+            const statusBadge = isLow ? `<span class="badge badge-low">LOW STOCK</span>` : `<span class="badge badge-ok">OK</span>`;
+
+            body.innerHTML += `
+                <tr>
+                    <td><b>${item.part_id}</b></td>
+                    <td>${item.part_name}</td>
+                    <td>${item.stock_quantity}</td>
+                    <td>$${(item.unit_price || 0).toFixed(2)}</td>
+                    <td>${statusBadge}</td>
+                    <td><button class="btn-edit" onclick="editItem('${item.part_id}', '${item.part_name}', ${item.stock_quantity}, ${item.unit_price})">EDIT</button></td>
+                </tr>`;
+        });
+
+        document.getElementById('stat-count').innerText = totalItems;
+        document.getElementById('stat-low').innerText = lowStockCount;
+        document.getElementById('stat-value').innerText = "$" + totalValue.toLocaleString();
+    }
+
+    function openModal() {
+        isEditing = false;
+        document.getElementById('modal-title').innerText = "Add New Part";
+        document.getElementById('part-id').disabled = false;
+        document.getElementById('part-id').value = "";
+        document.getElementById('part-name').value = "";
+        document.getElementById('part-qty').value = "";
+        document.getElementById('part-price').value = "";
+        document.getElementById('part-modal').style.display = 'flex';
+    }
+
+    function editItem(id, name, qty, price) {
+        isEditing = true;
+        document.getElementById('modal-title').innerText = "Edit Part Details";
+        document.getElementById('part-id').value = id;
+        document.getElementById('part-id').disabled = true; // Don't change IDs
+        document.getElementById('part-name').value = name;
+        document.getElementById('part-qty').value = qty;
+        document.getElementById('part-price').value = price;
+        document.getElementById('part-modal').style.display = 'flex';
+    }
+
+    async function savePart() {
+        const id = document.getElementById('part-id').value;
+        const name = document.getElementById('part-name').value;
+        const qty = parseInt(document.getElementById('part-qty').value);
+        const price = parseFloat(document.getElementById('part-price').value);
+
+        if(!id || !name) return alert("Please fill name and ID");
+
+        const partData = { part_id: id, part_name: name, stock_quantity: qty, unit_price: price };
+
+        let result;
+        if(isEditing) {
+            result = await _s.from('inventory').update(partData).eq('part_id', id);
+        } else {
+            result = await _s.from('inventory').insert([partData]);
+        }
+
+        if(!result.error) {
+            alert("Inventory Updated!");
+            closeModal();
+            loadInventory();
+        } else {
+            alert("Error: " + result.error.message);
+        }
+    }
+
+    function closeModal() { document.getElementById('part-modal').style.display = 'none'; }
+    function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+
+    loadInventory();
+</script>
+</body></html>

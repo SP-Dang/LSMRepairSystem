@@ -30,59 +30,37 @@
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
     const _s = supabase.createClient(u, k);
 
-    async function login() {
-        const pin = document.getElementById('pin-input').value;
-        const btn = document.getElementById('login-btn');
-        const loader = document.getElementById('loader');
+    async function handleLogin() {
+    const selectedRole = document.getElementById('role-select').value;
+    const enteredPin = document.getElementById('pin-input').value;
 
-        if (!pin) return alert("Please enter your 4-digit PIN");
+    // Search Supabase for a match
+    const { data, error } = await _s
+        .from('staff')
+        .select('*')
+        .eq('role', selectedRole)
+        .eq('pin', enteredPin)
+        .maybeSingle();
 
-        // UI Feedback
-        btn.disabled = true;
-        btn.innerText = "CHECKING...";
-        loader.style.display = "block";
+    if (data) {
+        // Login Success!
+        localStorage.setItem('lsm_user_name', data.staff_name);
+        localStorage.setItem('lsm_role', data.role);
 
-        try {
-            // 1. Search for the staff member by PIN
-            const { data, error } = await _s.from('staff')
-                .select('name, role, pin')
-                .eq('pin', pin)
-                .maybeSingle();
-
-            if (error) throw error;
-
-            if (data) {
-                // 2. Save Session Data
-                localStorage.setItem('lsm_user_name', data.name);
-                localStorage.setItem('lsm_user_role', data.role);
-
-                // 3. Clean and Route
-                const role = data.role ? data.role.toUpperCase() : "NONE";
-                
-                if (role === 'MANAGER') {
-                    window.location.href = 'manager-dashboard.html';
-                } else if (role === 'RECEPTIONIST') {
-                    window.location.href = 'reception-checkin.html';
-                } else if (role === 'MECHANIC') {
-                    window.location.href = 'mechanic-view.html';
-                } else if (role === 'PDI') {
-                    window.location.href = 'pdi-release.html';
-                } else if (role === 'WAREHOUSE') {
-                    window.location.href = 'warehouse-parts.html';
-                } else {
-                    alert("ACCESS DENIED: Role '" + role + "' not recognized.");
-                    resetUI();
-                }
-            } else {
-                alert("❌ INVALID PIN: Access Denied.");
-                resetUI();
-            }
-        } catch (err) {
-            console.error("Login Error:", err);
-            alert("SYSTEM ERROR: " + err.message);
-            resetUI();
+        // Redirect based on role
+        if (data.role === 'GM') {
+            window.location.href = 'gm-menu.html';
+        } else if (data.role === 'RECEPTIONIST') {
+            window.location.href = 'reception-input.html';
+        } else if (data.role === 'MECHANIC') {
+            window.location.href = 'mechanic-view.html';
+        } else if (data.role === 'WAREHOUSE') {
+            window.location.href = 'warehouse-parts.html';
         }
+    } else {
+        alert("❌ Invalid PIN for " + selectedRole);
     }
+}
 
     function resetUI() {
         const btn = document.getElementById('login-btn');

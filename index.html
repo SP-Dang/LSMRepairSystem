@@ -4,76 +4,114 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LSM REPAIR SYSTEM - LOGIN</title>
+    <title>LSM - Secure Login</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-card { background: #222; padding: 40px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; width: 300px; border-top: 4px solid #ff4500; }
-        h1 { color: #ff4500; margin-bottom: 25px; font-size: 24px; letter-spacing: 1px; }
-        input { width: 100%; padding: 15px; margin-bottom: 20px; border-radius: 8px; border: 1px solid #333; background: #111; color: white; font-size: 20px; text-align: center; letter-spacing: 5px; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; background: #ff4500; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.3s; }
-        button:hover { background: #e63e00; }
-        .loading { display: none; color: #888; font-size: 12px; margin-top: 10px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #1a2a3a; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 100%; max-width: 350px; text-align: center; }
+        h1 { color: #1a2a3a; margin-bottom: 5px; font-size: 24px; }
+        p { color: #7f8c8d; font-size: 14px; margin-bottom: 25px; }
+        select, input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        .btn-login { width: 100%; padding: 12px; background: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.3s; }
+        .btn-login:hover { background: #219150; }
+        .btn-login:disabled { background: #bdc3c7; cursor: not-allowed; }
+        #msg { margin-top: 15px; font-size: 13px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="login-card">
-    <h1>LSM SYSTEM</h1>
-    <input type="password" id="pin-input" placeholder="ENTER PIN" maxlength="4" inputmode="numeric">
-    <button id="login-btn" onclick="login()">SIGN IN</button>
-    <div id="loader" class="loading">Verifying PIN with Database...</div>
+    <h1>LSM SYSTEMS</h1>
+    <p>Please select your role and enter PIN</p>
+
+    <select id="role-select">
+        <option value="GM">GENERAL MANAGER</option>
+        <option value="RECEPTIONIST">RECEPTIONIST</option>
+        <option value="MECHANIC">MECHANIC</option>
+        <option value="WAREHOUSE">WAREHOUSE</option>
+    </select>
+
+    <input type="password" id="pin-input" placeholder="Enter 4-Digit PIN" maxlength="4" inputmode="numeric">
+
+    <button class="btn-login" id="login-btn" onclick="handleLogin()">SECURE LOGIN</button>
+    
+    <div id="msg"></div>
 </div>
 
 <script>
-    // YOUR SUPABASE CONFIG
+    // --- CONFIGURATION ---
     const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
     const _s = supabase.createClient(u, k);
 
     async function handleLogin() {
-    const selectedRole = document.getElementById('role-select').value;
-    const enteredPin = document.getElementById('pin-input').value;
-
-    // Search Supabase for a match
-    const { data, error } = await _s
-        .from('staff')
-        .select('*')
-        .eq('role', selectedRole)
-        .eq('pin', enteredPin)
-        .maybeSingle();
-
-    if (data) {
-        // Login Success!
-        localStorage.setItem('lsm_user_name', data.staff_name);
-        localStorage.setItem('lsm_role', data.role);
-
-        // Redirect based on role
-        if (data.role === 'GM') {
-            window.location.href = 'gm-menu.html';
-        } else if (data.role === 'RECEPTIONIST') {
-            window.location.href = 'reception-input.html';
-        } else if (data.role === 'MECHANIC') {
-            window.location.href = 'mechanic-view.html';
-        } else if (data.role === 'WAREHOUSE') {
-            window.location.href = 'warehouse-parts.html';
-        }
-    } else {
-        alert("❌ Invalid PIN for " + selectedRole);
-    }
-}
-
-    function resetUI() {
+        const role = document.getElementById('role-select').value;
+        const pin = document.getElementById('pin-input').value;
         const btn = document.getElementById('login-btn');
-        const loader = document.getElementById('loader');
-        btn.disabled = false;
-        btn.innerText = "SIGN IN";
-        loader.style.display = "none";
-        document.getElementById('pin-input').value = "";
+        const msg = document.getElementById('msg');
+
+        if (!pin) {
+            msg.style.color = "#e74c3c";
+            msg.innerText = "⚠️ Please enter your PIN";
+            return;
+        }
+
+        // Disable button and show loading status
+        btn.disabled = true;
+        btn.innerText = "VERIFYING...";
+        msg.innerText = "";
+
+        try {
+            // Check Supabase 'staff' table using your exact column names: name, pin, role
+            const { data, error } = await _s
+                .from('staff')
+                .select('name, role')
+                .eq('role', role)
+                .eq('pin', pin)
+                .maybeSingle();
+
+            if (error) throw error;
+
+            if (data) {
+                // Success! Store user details locally
+                localStorage.setItem('lsm_user_name', data.name);
+                localStorage.setItem('lsm_role', data.role);
+
+                msg.style.color = "#27ae60";
+                msg.innerText = "✅ Access Granted! Redirecting...";
+
+                // Redirect logic
+                setTimeout(() => {
+                    if (data.role === 'GM') {
+                        window.location.href = 'gm-menu.html';
+                    } else if (data.role === 'RECEPTIONIST') {
+                        window.location.href = 'reception-input.html';
+                    } else if (data.role === 'MECHANIC') {
+                        window.location.href = 'mechanic-view.html';
+                    } else if (data.role === 'WAREHOUSE') {
+                        window.location.href = 'warehouse-parts.html';
+                    }
+                }, 1000);
+
+            } else {
+                // No match found
+                msg.style.color = "#e74c3c";
+                msg.innerText = "❌ Incorrect PIN for " + role;
+                btn.disabled = false;
+                btn.innerText = "SECURE LOGIN";
+            }
+
+        } catch (err) {
+            console.error(err);
+            msg.style.color = "#e74c3c";
+            msg.innerText = "System Error: " + err.message;
+            btn.disabled = false;
+            btn.innerText = "SECURE LOGIN";
+        }
     }
 
     // Allow pressing "Enter" key to login
     document.getElementById('pin-input').addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') login();
+        if (e.key === 'Enter') handleLogin();
     });
 </script>
 

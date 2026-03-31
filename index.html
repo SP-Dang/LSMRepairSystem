@@ -39,7 +39,6 @@
 </div>
 
 <script>
-    // --- CONFIGURATION ---
     const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
     const _s = supabase.createClient(u, k);
@@ -56,13 +55,11 @@
             return;
         }
 
-        // Disable button and show loading status
         btn.disabled = true;
         btn.innerText = "VERIFYING...";
         msg.innerText = "";
 
         try {
-            // Check Supabase 'staff' table using your exact column names: name, pin, role
             const { data, error } = await _s
                 .from('staff')
                 .select('name, role')
@@ -73,28 +70,27 @@
             if (error) throw error;
 
             if (data) {
-                // Success! Store user details locally
                 localStorage.setItem('lsm_user_name', data.name);
                 localStorage.setItem('lsm_role', data.role);
 
                 msg.style.color = "#27ae60";
                 msg.innerText = "✅ Access Granted! Redirecting...";
 
-                // Redirect logic
                 setTimeout(() => {
+                    // --- REDIRECT LOGIC FIXED BELOW ---
                     if (data.role === 'GM') {
                         window.location.href = 'gm-menu.html';
                     } else if (data.role === 'RECEPTIONIST') {
-                        window.location.href = 'reception-checkin.html';
-                    } else if (data.role === 'MECHANIC') {
-                        window.location.href = 'mechanic-view.html';
+                        window.location.href = 'reception-checkin.html'; // Fixed name
+                    } else if (data.role === 'MECHANIC' || data.role === 'PDI') {
+                        // Both Mechanics and PDI use the same view
+                        window.location.href = 'mechanic-view.html'; 
                     } else if (data.role === 'WAREHOUSE') {
                         window.location.href = 'warehouse-parts.html';
                     }
                 }, 1000);
 
             } else {
-                // No match found
                 msg.style.color = "#e74c3c";
                 msg.innerText = "❌ Incorrect PIN for " + role;
                 btn.disabled = false;
@@ -110,7 +106,6 @@
         }
     }
 
-    // Allow pressing "Enter" key to login
     document.getElementById('pin-input').addEventListener('keypress', function (e) {
         if (e.key === 'Enter') handleLogin();
     });

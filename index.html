@@ -76,19 +76,24 @@
                 msg.style.color = "#27ae60";
                 msg.innerText = "✅ Access Granted! Redirecting...";
 
-                setTimeout(() => {
-                    // --- REDIRECT LOGIC FIXED BELOW ---
-                    if (data.role === 'GM') {
-                        window.location.href = 'gm-menu.html';
-                    } else if (data.role === 'RECEPTIONIST') {
-                        window.location.href = 'reception-checkin.html'; // Fixed name
-                    } else if (data.role === 'MECHANIC' || data.role === 'PDI') {
-                        // Both Mechanics and PDI use the same view
-                        window.location.href = 'mechanic-view.html'; 
-                    } else if (data.role === 'WAREHOUSE') {
-                        window.location.href = 'warehouse-parts.html';
-                    }
-                }, 1000);
+           setTimeout(() => {
+    if (data.role === 'GM') {
+        window.location.href = 'gm-menu.html';
+    } 
+    else if (data.role === 'RECEPTIONIST') {
+        window.location.href = 'reception-checkin.html';
+    } 
+    else if (data.role === 'MECHANIC') {
+        window.location.href = 'mechanic-view.html';
+    } 
+    else if (data.role === 'PDI') {
+        // Pointing exactly to your GitHub file name
+        window.location.href = 'pdi-release.html'; 
+    } 
+    else if (data.role === 'WAREHOUSE') {
+        window.location.href = 'warehouse-parts.html';
+    }
+}, 1000);
 
             } else {
                 msg.style.color = "#e74c3c";

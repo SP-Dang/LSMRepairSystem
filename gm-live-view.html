@@ -61,20 +61,29 @@
     </div>
     <div id="debug-log">System Initializing...</div>
 </div>
-
 <script>
     const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
     const _s = supabase.createClient(u, k);
 
-    function log(msg) { document.getElementById('debug-log').innerText = "Status: " + msg; }
-
     async function loadLiveView() {
-        log("Fetching data from Supabase...");
-        const { data: jobs, error } = await _s.from('job_cards').select('*').order('created_at', { ascending: false });
+        const logBox = document.getElementById('debug-log');
+        const countBox = document.getElementById('job-count');
+        
+        logBox.innerText = "Status: Connecting to Database...";
+
+        // TRY FETCHING - We use 'job_cards' (lowercase)
+        const { data: jobs, error } = await _s.from('job_cards').select('*');
         
         if (error) {
-            log("Error: " + error.message);
+            logBox.innerText = "❌ ERROR: " + error.message;
+            logBox.style.color = "red";
+            return;
+        }
+
+        if (!jobs || jobs.length === 0) {
+            logBox.innerText = "⚠️ Connected, but NO DATA found in 'job_cards' table.";
+            countBox.innerText = "0 Jobs Found";
             return;
         }
 
@@ -84,23 +93,23 @@
         document.getElementById('col-PDI').innerHTML = "";
         document.getElementById('col-COMPLETED').innerHTML = "";
 
-        if (!jobs || jobs.length === 0) {
-            log("Success: Connected, but 0 jobs found.");
-            document.getElementById('job-count').innerText = "0 Active Jobs";
-            return;
-        }
-
-        log("Processing " + jobs.length + " jobs...");
-        document.getElementById('job-count').innerText = jobs.length + " Active Jobs";
+        logBox.innerText = `✅ Found ${jobs.length} jobs. Sorting now...`;
+        countBox.innerText = jobs.length + " Active Jobs";
 
         jobs.forEach(job => {
-            const status = (job.current_status || 'QUEUED').toUpperCase().trim();
-            let targetId = 'col-RECEPTION';
+            // We force everything to uppercase and remove spaces to prevent errors
+            const status = String(job.current_status || '').toUpperCase().trim();
+            let targetId = 'col-RECEPTION'; // Default fallback
 
-            if (['QUEUED', 'RECEPTION', 'WAITING', 'NEW'].includes(status)) targetId = 'col-RECEPTION';
-            else if (['IN_REPAIR', 'REPAIRING', 'WORKING'].includes(status)) targetId = 'col-IN_REPAIR';
-            else if (['PDI', 'INSPECTION'].includes(status)) targetId = 'col-PDI';
-            else if (['COMPLETED', 'READY', 'DONE'].includes(status)) targetId = 'col-COMPLETED';
+            if (status.includes('QUEUED') || status.includes('RECEPTION') || status.includes('WAITING')) {
+                targetId = 'col-RECEPTION';
+            } else if (status.includes('REPAIR') || status.includes('WORKING')) {
+                targetId = 'col-IN_REPAIR';
+            } else if (status.includes('PDI')) {
+                targetId = 'col-PDI';
+            } else if (status.includes('COMPLETED') || status.includes('READY')) {
+                targetId = 'col-COMPLETED';
+            }
 
             const container = document.getElementById(targetId);
             if (container) {
@@ -108,17 +117,16 @@
                 card.className = 'job-card';
                 card.innerHTML = `
                     <span class="plate">${job.vehicle_plate}</span>
-                    <span class="details">${job.core_type || 'General Service'}</span>
-                    <span class="mech-name">👤 ${job.assigned_mechanic_id || 'Waiting...'}</span>
-                    <div class="symptoms">${job.symptoms || 'No issues listed'}</div>
+                    <span class="details">${job.core_type || 'Taxi'}</span>
+                    <span class="mech-name">👤 ${job.assigned_mechanic_id || 'Pending'}</span>
+                    <div class="symptoms">${job.symptoms || 'No notes'}</div>
                 `;
                 container.appendChild(card);
             }
         });
-        log("Live View Updated at " + new Date().toLocaleTimeString());
     }
 
     loadLiveView();
-    setInterval(loadLiveView, 30000);
+    setInterval(loadLiveView, 20000); // Auto-refresh every 20 seconds
 </script>
 </body></html>

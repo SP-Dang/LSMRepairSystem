@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>LSM - REPAIR HISTORY</title><style>
     body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;margin:0;padding:20px}
-    .container{max-width:1100px;margin:0 auto}
+    .container{max-width:1200px;margin:0 auto}
     .search-panel{background:#fff;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.05);margin-bottom:20px;display:flex;gap:15px;align-items:flex-end;flex-wrap:wrap}
     .filter-group{display:flex;flex-direction:column;gap:5px}
     label{font-size:11px;font-weight:bold;color:#666;text-transform:uppercase}
@@ -12,6 +12,8 @@
     .history-table td{padding:15px;border-bottom:1px solid #eee;font-size:14px;color:#333}
     .status-badge{padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold;background:#e1f5fe;color:#01579b}
     .core-tag{font-size:10px;padding:2px 5px;border-radius:3px;margin-right:5px;color:white}
+    .btn-print{background:#3498db;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-weight:bold;font-size:11px}
+    .btn-print:hover{background:#2980b9}
 </style></head><body>
 
 <div class="container">
@@ -21,12 +23,12 @@
             <a href="gm-live-view.html" style="text-decoration:none;color:#3498db;font-weight:bold;border:1px solid #3498db;padding:5px 15px;border-radius:6px;font-size:14px">
                 ⬅️ Back to Live View
             </a>
-            
             <button onclick="logout()" style="background:none; border:1px solid #e74c3c; color:#e74c3c; font-weight:bold; padding:5px 15px; border-radius:6px; cursor:pointer; font-size:14px;">
                 Logout
             </button>
         </div>
     </div>
+
     <div class="search-panel">
         <div class="filter-group">
             <label>Search Plate Number</label>
@@ -53,10 +55,11 @@
                 <th>PDI By</th>
                 <th>Symptoms</th>
                 <th>Status</th>
+                <th>Action</th>
             </tr>
         </thead>
         <tbody id="history-body">
-            <tr><td colspan="7" style="text-align:center;padding:50px;color:#888">Enter a plate or select dates to begin...</td></tr>
+            <tr><td colspan="8" style="text-align:center;padding:50px;color:#888">Enter a plate or select dates to begin...</td></tr>
         </tbody>
     </table>
 </div>
@@ -66,12 +69,10 @@
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
     const _s = supabase.createClient(u, k);
 
-    // Set default dates (Last 30 days)
     window.onload = () => {
         const today = new Date();
         const lastMonth = new Date();
         lastMonth.setDate(today.getDate() - 30);
-        
         document.getElementById('date-to').value = today.toISOString().split('T')[0];
         document.getElementById('date-from').value = lastMonth.toISOString().split('T')[0];
         fetchHistory();
@@ -83,11 +84,10 @@
         const to = document.getElementById('date-to').value;
         const tbody = document.getElementById('history-body');
 
-        tbody.innerHTML = "<tr><td colspan='7' style='text-align:center'>Searching records...</td></tr>";
+        tbody.innerHTML = "<tr><td colspan='8' style='text-align:center'>Searching records...</td></tr>";
 
         let query = _s.from('job_cards').select('*').order('arrival_time', { ascending: false });
 
-        // Apply filters
         if (plate) query = query.ilike('vehicle_plate', `%${plate}%`);
         if (from) query = query.gte('arrival_time', `${from}T00:00:00`);
         if (to) query = query.lte('arrival_time', `${to}T23:59:59`);
@@ -95,12 +95,12 @@
         const { data, error } = await query.limit(100);
 
         if (error) {
-            tbody.innerHTML = `<tr><td colspan='7' style='color:red'>Error: ${error.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan='8' style='color:red'>Error: ${error.message}</td></tr>`;
             return;
         }
 
         if (data.length === 0) {
-            tbody.innerHTML = "<tr><td colspan='7' style='text-align:center'>No matching records found.</td></tr>";
+            tbody.innerHTML = "<tr><td colspan='8' style='text-align:center'>No matching records found.</td></tr>";
             return;
         }
 
@@ -116,12 +116,67 @@
                     <td>${job.pdi_by || '-'}</td>
                     <td style="font-size:12px;color:#666;max-width:200px">${job.symptoms}</td>
                     <td><span class="status-badge">${job.current_status}</span></td>
+                    <td><button class="btn-print" onclick='printJob("${job.id}")'>🖨️ Print</button></td>
                 </tr>
             `;
             tbody.innerHTML += row;
         });
     }
-    // Function to clear session and go to login page
+
+    async function printJob(id) {
+        const { data: job, error } = await _s.from('job_cards').select('*').eq('id', id).single();
+        if (error || !job) return alert("Could not fetch job details for printing.");
+
+        const printWin = window.open('', '_blank');
+        const now = new Date().toLocaleString('en-GB');
+
+        printWin.document.write(`
+            <html>
+            <head>
+                <title>Print Job Card - ${job.vehicle_plate}</title>
+                <style>
+                    body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #000; }
+                    .header-title { font-size: 24px; font-weight: bold; text-align: center; margin-bottom: 20px; }
+                    .meta-info { font-size: 14px; margin-bottom: 5px; }
+                    hr { border: 0; border-top: 1px solid #000; margin: 15px 0; }
+                    .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
+                    .data-item { font-size: 15px; }
+                    .data-label { font-weight: bold; text-transform: uppercase; font-size: 12px; color: #555; }
+                    .footer { margin-top: 80px; display: flex; justify-content: space-between; }
+                    .sig-line { border-top: 1px solid #000; width: 200px; text-align: center; padding-top: 5px; font-weight: bold; }
+                </style>
+            </head>
+            <body>
+                <div class="header-title">LAO SMART MOBILITY</div>
+                <div class="meta-info"><strong>Job Card No:</strong> ${job.id}</div>
+                <div class="meta-info"><strong>Generated on:</strong> ${now}</div>
+                
+                <hr>
+                
+                <div class="data-grid">
+                    <div class="data-item"><div class="data-label">Vehicle Plate</div><strong>${job.vehicle_plate}</strong></div>
+                    <div class="data-item"><div class="data-label">Core Type</div><strong>Core ${job.core_type}</strong></div>
+                    <div class="data-item"><div class="data-label">Mechanic</div><strong>${job.assigned_mechanic_id || 'Not Assigned'}</strong></div>
+                    <div class="data-item"><div class="data-label">PDI Inspector</div><strong>${job.pdi_by || 'Pending'}</strong></div>
+                    <div class="data-item" style="grid-column: span 2;"><div class="data-label">Symptoms / Notes</div><strong>${job.symptoms || 'None recorded'}</strong></div>
+                </div>
+
+                <hr>
+
+                <div class="footer">
+                    <div class="sig-line">Prepared by</div>
+                    <div class="sig-line">General Manager</div>
+                </div>
+
+                <script>
+                    window.onload = function() { window.print(); window.close(); }
+                <\/script>
+            </body>
+            </html>
+        `);
+        printWin.document.close();
+    }
+
     function logout() {
         localStorage.clear();
         window.location.href = 'index.html';

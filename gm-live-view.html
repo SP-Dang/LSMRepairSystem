@@ -72,16 +72,16 @@
         
         logBox.innerText = "Status: Filtering for Active Jobs...";
 
-        // NEW FILTER: .neq('current_status', 'FINISHED') 
-        // This stops old jobs from showing up!
+        // REMOVED .order('created_at') to prevent the error
+        // We only filter for jobs that are NOT finished
         const { data: jobs, error } = await _s
             .from('job_cards')
             .select('*')
-            .neq('current_status', 'FINISHED') 
-            .order('created_at', { ascending: false });
+            .neq('current_status', 'FINISHED');
         
         if (error) {
             logBox.innerText = "❌ ERROR: " + error.message;
+            logBox.style.color = "#e74c3c";
             return;
         }
 
@@ -104,7 +104,6 @@
             const status = String(job.current_status || '').toUpperCase().trim();
             let targetId = 'col-RECEPTION'; 
 
-            // Sorting logic remains the same
             if (status.includes('QUEUED') || status.includes('RECEPTION') || status.includes('WAITING')) {
                 targetId = 'col-RECEPTION';
             } else if (status.includes('REPAIR') || status.includes('WORKING')) {

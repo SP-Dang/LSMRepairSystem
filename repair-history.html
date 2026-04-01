@@ -17,9 +17,16 @@
 <div class="container">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
         <h1>📜 Repair History Search</h1>
-        <a href="manager-dashboard.html" style="text-decoration:none;color:#ff4500;font-weight:bold">← Back</a>
+        <div style="display: flex; gap: 10px;">
+            <a href="gm-live-view.html" style="text-decoration:none;color:#3498db;font-weight:bold;border:1px solid #3498db;padding:5px 15px;border-radius:6px;font-size:14px">
+                ⬅️ Back to Live View
+            </a>
+            
+            <button onclick="logout()" style="background:none; border:1px solid #e74c3c; color:#e74c3c; font-weight:bold; padding:5px 15px; border-radius:6px; cursor:pointer; font-size:14px;">
+                Logout
+            </button>
+        </div>
     </div>
-
     <div class="search-panel">
         <div class="filter-group">
             <label>Search Plate Number</label>
@@ -113,6 +120,11 @@
             `;
             tbody.innerHTML += row;
         });
+    }
+    // Function to clear session and go to login page
+    function logout() {
+        localStorage.clear();
+        window.location.href = 'index.html';
     }
 </script>
 </body></html>

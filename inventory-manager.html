@@ -143,45 +143,86 @@
         const tbody = document.getElementById('movement-body');
         tbody.innerHTML = "<tr><td colspan='6' style='text-align:center'>Loading logs...</td></tr>";
 
+        // Fetch from both tables
         const { data: outs } = await _s.from('part_requests').select('part_name, quantity, issued_by, request_time, job_id').eq('status', 'ISSUED');
-        const { data: ins } = await _s.from('transaction_log').select('*');
+        
+        // Try fetching from transaction_log (make sure this matches your SQL table name exactly)
+        const { data: ins, error: inError } = await _s.from('transaction_log').select('*');
+
+        if (inError) {
+            console.error("Error fetching IN logs:", inError);
+        }
 
         let combined = [];
+        // Process OUT logs
         if(outs) outs.forEach(o => combined.push({t: o.request_time, n: o.part_name, type: 'OUT', q: o.quantity, r: `JOB#${o.job_id}`, s: o.issued_by}));
-        if(ins) ins.forEach(i => combined.push({t: i.created_at, n: i.part_name, type: i.type, q: i.quantity, r: i.reference, s: i.staff_name}));
+        
+        // Process IN logs (Force 'IN' to be uppercase for the badge logic)
+        if(ins) ins.forEach(i => combined.push({t: i.created_at, n: i.part_name, type: 'IN', q: i.quantity, r: i.reference, s: i.staff_name}));
 
         combined.sort((a,b) => new Date(b.t) - new Date(a.t));
+        
+        if (combined.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='6' style='text-align:center'>No movement logs found.</td></tr>";
+            return;
+        }
+
         tbody.innerHTML = combined.map(l => `<tr>
             <td>${new Date(l.t).toLocaleString('en-GB')}</td>
             <td>${l.n}</td>
-            <td><span class="badge" style="background:${l.type==='IN'?'#27ae60':'#e67e22'}">${l.type}</span></td>
-            <td><b style="color:${l.type==='IN'?'green':'red'}">${l.type==='IN'?'+':'-'}${l.q}</b></td>
-            <td>${l.r}</td>
+            <td><span class="badge" style="background:${l.type === 'IN' ? '#27ae60' : '#e67e22'}">${l.type}</span></td>
+            <td><b style="color:${l.type === 'IN' ? 'green' : 'red'}">${l.type === 'IN' ? '+' : '-'}${l.q}</b></td>
+            <td>${l.r || '-'}</td>
             <td>${l.s || 'System'}</td>
         </tr>`).join('');
     }
-
     async function savePart() {
         const id = document.getElementById('part-id').value;
         const name = document.getElementById('part-name').value;
         const qty = parseInt(document.getElementById('part-qty').value);
         const price = parseFloat(document.getElementById('part-price').value);
 
+        if(!id || !name) return alert("Please fill name and ID");
+
         const partData = { part_id: id, part_name: name, stock_quantity: qty, unit_price: price };
 
         let res;
         if(isEditing) {
             res = await _s.from('inventory').update(partData).eq('part_id', id);
-            // Log if stock was increased manually
+            
+            // LOG THE INCREASE
             if(qty > originalQty) {
-                await _s.from('transaction_log').insert([{part_id: id, part_name: name, type: 'IN', quantity: qty - originalQty, reference: 'Manual Edit', staff_name: 'GM'}]);
+                const { error: logErr } = await _s.from('transaction_log').insert([{
+                    part_id: id, 
+                    part_name: name, 
+                    type: 'IN', 
+                    quantity: qty - originalQty, 
+                    reference: 'Stock Top-up', 
+                    staff_name: 'GM'
+                }]);
+                if(logErr) console.error("Log Error:", logErr);
             }
         } else {
+            // NEW PART ADDED
             res = await _s.from('inventory').insert([partData]);
-            await _s.from('transaction_log').insert([{part_id: id, part_name: name, type: 'IN', quantity: qty, reference: 'New Stock', staff_name: 'GM'}]);
+            const { error: logErr } = await _s.from('transaction_log').insert([{
+                part_id: id, 
+                part_name: name, 
+                type: 'IN', 
+                quantity: qty, 
+                reference: 'Initial Stock', 
+                staff_name: 'GM'
+            }]);
+            if(logErr) console.error("Log Error:", logErr);
         }
 
-        if(!res.error) { closeModal(); loadInventory(); } else { alert(res.error.message); }
+        if(!res.error) { 
+            alert("Inventory and Logs Updated!");
+            closeModal(); 
+            loadInventory(); 
+        } else { 
+            alert("Error: " + res.error.message); 
+        }
     }
 
     function openModal() {

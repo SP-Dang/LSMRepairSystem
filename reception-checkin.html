@@ -34,16 +34,27 @@
     background: #e74c3c;
     color: #fff;
 }
+button[onclick*="manager-dashboard"]:hover {
+    background: #3498db !important;
+    color: #fff !important;
+}   
     /* Style for the auto-fill notification */
     #search-status { font-size: 10px; font-weight: bold; margin-top: 4px; display: block; }
 </style></head><body>
 
 <div class="card">
-    <h2>
+ <h2>
         <span>🆕 E-Tricycle Check-In</span> 
         <div style="text-align:right">
-            <div id="user-display" style="font-size:12px;color:#888;font-weight:normal">Loading...</div>
-            <button class="logout-btn" onclick="logout()">Logout</button>
+            <div id="user-display" style="font-size:12px;color:#888;font-weight:normal;margin-bottom:5px;">Loading...</div>
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button onclick="location.href='manager-dashboard.html'" 
+                    style="font-size:14px; color:#3498db; cursor:pointer; text-decoration:none; border:1px solid #3498db; background:none; padding:4px 10px; border-radius:5px; font-weight:bold; transition:0.2s;">
+                    🔧 Assign Mechanic
+                </button>
+                
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
         </div>
     </h2>
     

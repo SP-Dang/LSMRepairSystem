@@ -4,25 +4,25 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LSM - INVENTORY CONTROL</title>
+    <title>LSM - INVENTORY CONTROL PRO</title>
     <style>
         body{font-family:'Segoe UI',sans-serif;background:#f4f7f6;margin:0;padding:20px}
         .container{max-width:1100px;margin:0 auto}
         .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
         
-        /* Stats Dashboard */
+        /* Dashboard Stats */
         .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:25px}
         .stat-card{background:white;padding:20px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.05);text-align:center}
         .stat-card h3{margin:0;font-size:12px;color:#7f8c8d;text-transform:uppercase}
         .stat-card p{margin:10px 0 0;font-size:24px;font-weight:bold;color:#2c3e50}
         
-        /* Search Bar */
+        /* Search Panel */
         .search-panel{background:white;padding:15px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.05);margin-bottom:20px;display:flex;gap:15px;align-items:flex-end}
         .filter-group{display:flex;flex-direction:column;gap:5px;flex:1}
         .filter-group label{font-size:11px;font-weight:bold;color:#666;text-transform:uppercase}
         .filter-group input{padding:10px;border:1px solid #ddd;border-radius:6px;font-size:14px}
 
-        /* Modern Tabs */
+        /* Tabs */
         .tab-container{margin-bottom:20px; border-bottom: 2px solid #ddd; display: flex; gap: 10px;}
         .tab-btn{padding:12px 20px; cursor:pointer; border:none; background:none; font-weight:bold; color:#7f8c8d; transition:0.3s; border-bottom: 3px solid transparent;}
         .tab-btn.active{color:#ff4500; border-bottom: 3px solid #ff4500; margin-bottom:-2px;}
@@ -40,6 +40,10 @@
         #part-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);justify-content:center;align-items:center; z-index:1000;}
         .modal-content{background:white;padding:30px;border-radius:12px;width:400px}
         .modal-content input{width:95%;padding:10px;margin-bottom:15px;border:1px solid #ddd;border-radius:5px}
+        
+        /* Analytics Cards */
+        .analytics-grid{display:grid; grid-template-columns: 1fr 1fr; gap:20px;}
+        .list-item{display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee;}
     </style>
 </head>
 <body>
@@ -48,31 +52,36 @@
     <a href="gm-menu.html" style="text-decoration:none; color:#3498db; font-weight:bold;">⬅️ BACK TO GM MENU</a>
     
     <div class="header">
-        <h1 style="color:#ff4500;">📦 Inventory Control</h1>
-        <button class="btn-add" onclick="openModal()">+ ADD / RECEIVE STOCK</button>
+        <h1 style="color:#ff4500;">📦 Inventory Control Pro</h1>
+        <div style="display:flex; gap:10px;">
+            <button class="btn-add" style="background:#e74c3c;" onclick="showShoppingList()">📋 REORDER LIST</button>
+            <button class="btn-add" onclick="openModal()">+ NEW / ADD STOCK</button>
+        </div>
     </div>
 
     <div class="stats-grid">
-        <div class="stat-card"><h3>Total Unique Parts</h3><p id="stat-count">0</p></div>
-        <div class="stat-card"><h3>Low Stock Items</h3><p id="stat-low" style="color:#e74c3c">0</p></div>
+        <div class="stat-card"><h3>Total Parts</h3><p id="stat-count">0</p></div>
+        <div class="stat-card"><h3>Alerts (Low Stock)</h3><p id="stat-low" style="color:#e74c3c">0</p></div>
         <div class="stat-card"><h3>Stock Valuation</h3><p id="stat-value">$0</p></div>
     </div>
 
     <div class="search-panel">
-        <div class="filter-group"><label>Search by Part ID</label><input type="text" id="search-id" placeholder="Barcode..." onkeyup="filterInventory()"></div>
-        <div class="filter-group"><label>Search by Part Name</label><input type="text" id="search-name" placeholder="Brake pads, tire..." onkeyup="filterInventory()"></div>
+        <div class="filter-group"><label>Search Part ID</label><input type="text" id="search-id" onkeyup="filterInventory()"></div>
+        <div class="filter-group"><label>Search Part Name</label><input type="text" id="search-name" onkeyup="filterInventory()"></div>
+        <button class="btn-add" style="background:#34495e; display:none;" id="btn-reset-list" onclick="loadInventory()">SHOW ALL STOCK</button>
     </div>
 
     <div class="tab-container">
         <button class="tab-btn active" id="tab-stock" onclick="switchTab('stock')">CURRENT STOCK</button>
-        <button class="tab-btn" id="tab-in" onclick="switchTab('in')">📥 STOCK IN (PURCHASES)</button>
-        <button class="tab-btn" id="tab-out" onclick="switchTab('out')">📤 STOCK OUT (JOBS)</button>
+        <button class="tab-btn" id="tab-in" onclick="switchTab('in')">📥 STOCK IN</button>
+        <button class="tab-btn" id="tab-out" onclick="switchTab('out')">📤 STOCK OUT</button>
+        <button class="tab-btn" id="tab-charts" onclick="switchTab('charts')">📊 PERFORMANCE</button>
     </div>
 
     <div id="section-stock">
         <table class="inventory-table">
             <thead>
-                <tr><th>Part ID</th><th>Part Name</th><th>Stock Qty</th><th>Price/Unit</th><th>Status</th><th>Action</th></tr>
+                <tr><th>ID</th><th>Part Name</th><th>Qty</th><th>Min Level</th><th>Price</th><th>Status</th><th>Action</th></tr>
             </thead>
             <tbody id="inventory-body"></tbody>
         </table>
@@ -80,99 +89,91 @@
 
     <div id="section-in" style="display:none;">
         <table class="inventory-table" style="border-top: 5px solid #27ae60;">
-            <thead>
-                <tr><th>Date</th><th>Part Name</th><th>Qty Added</th><th>Reference</th><th>Logged By</th></tr>
-            </thead>
+            <thead><tr><th>Date</th><th>Part Name</th><th>Qty Added</th><th>Ref</th><th>Staff</th></tr></thead>
             <tbody id="in-body"></tbody>
         </table>
     </div>
 
     <div id="section-out" style="display:none;">
         <table class="inventory-table" style="border-top: 5px solid #e67e22;">
-            <thead>
-                <tr><th>Date</th><th>Part Name</th><th>Qty Issued</th><th>Job ID</th><th>Mechanic/Staff</th></tr>
-            </thead>
+            <thead><tr><th>Date</th><th>Part Name</th><th>Qty Issued</th><th>Job</th><th>Staff</th></tr></thead>
             <tbody id="out-body"></tbody>
         </table>
+    </div>
+
+    <div id="section-charts" style="display:none;">
+        <div class="analytics-grid">
+            <div class="stat-card">
+                <h3>Top Parts Consumed</h3>
+                <div id="top-parts-list" style="margin-top:10px;"></div>
+            </div>
+            <div class="stat-card">
+                <h3>Mechanic Usage (Units)</h3>
+                <div id="mechanic-list" style="margin-top:10px;"></div>
+            </div>
+        </div>
     </div>
 </div>
 
 <div id="part-modal">
     <div class="modal-content">
-        <h2 id="modal-title" style="margin-top:0;">Inventory Action</h2>
-        <label style="font-size:12px; color:#666;">Part ID (Unique Barcode)</label>
-        <input type="text" id="part-id" placeholder="e.g. BK-001">
-        <label style="font-size:12px; color:#666;">Part Name</label>
-        <input type="text" id="part-name" placeholder="e.g. Brake Pads">
-        <label style="font-size:12px; color:#666;">Current Stock Level</label>
-        <input type="number" id="part-qty" placeholder="Quantity">
-        <label style="font-size:12px; color:#666;">Unit Price ($)</label>
+        <h2 id="modal-title" style="margin-top:0;">Stock Entry</h2>
+        <input type="text" id="part-id" placeholder="Part ID">
+        <input type="text" id="part-name" placeholder="Part Name">
+        <div style="display:flex; gap:10px;">
+            <div style="flex:1;"><label style="font-size:11px;">Current Stock</label><input type="number" id="part-qty"></div>
+            <div style="flex:1;"><label style="font-size:11px;">Alert Level (Min)</label><input type="number" id="part-reorder" placeholder="e.g. 5"></div>
+        </div>
+        <label style="font-size:11px;">Unit Price ($)</label>
         <input type="number" id="part-price" placeholder="Price">
         <div style="display:flex; gap:10px; margin-top:10px;">
-            <button class="btn-add" style="flex:1" onclick="savePart()">SAVE CHANGES</button>
+            <button class="btn-add" style="flex:1" onclick="savePart()">CONFIRM</button>
             <button onclick="closeModal()" style="flex:1; background:#95a5a6; border:none; color:white; border-radius:5px; cursor:pointer;">CANCEL</button>
         </div>
     </div>
 </div>
 
 <script>
-    // --- DATABASE CONFIG ---
     const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
     const _s = supabase.createClient(u, k);
 
-    let isEditing = false;
-    let originalQty = 0; // Crucial for logging "IN" movements when editing
+    let isEditing = false, originalQty = 0;
 
-    // --- TAB SYSTEM ---
     function switchTab(tab) {
-        document.getElementById('section-stock').style.display = tab === 'stock' ? 'block' : 'none';
-        document.getElementById('section-in').style.display = tab === 'in' ? 'block' : 'none';
-        document.getElementById('section-out').style.display = tab === 'out' ? 'block' : 'none';
-        
-        document.getElementById('tab-stock').classList.toggle('active', tab === 'stock');
-        document.getElementById('tab-in').classList.toggle('active', tab === 'in');
-        document.getElementById('tab-out').classList.toggle('active', tab === 'out');
-
-        if(tab === 'in' || tab === 'out') loadMovement(tab);
+        document.querySelectorAll('.container > div[id^="section-"]').forEach(d => d.style.display = 'none');
+        document.getElementById(`section-${tab}`).style.display = 'block';
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`tab-${tab}`).classList.add('active');
+        if(tab === 'in' || tab === 'out') loadLogs(tab);
+        if(tab === 'charts') loadAnalytics();
     }
 
-    // --- LIVE FILTER ---
-    function filterInventory() {
-        const idVal = document.getElementById('search-id').value.toUpperCase();
-        const nameVal = document.getElementById('search-name').value.toUpperCase();
-        const rows = document.querySelectorAll('#inventory-body tr');
-
-        rows.forEach(row => {
-            const idText = row.cells[0].innerText.toUpperCase();
-            const nameText = row.cells[1].innerText.toUpperCase();
-            row.style.display = (idText.includes(idVal) && nameText.includes(nameVal)) ? "" : "none";
-        });
-    }
-
-    // --- LOAD CURRENT STOCK ---
     async function loadInventory() {
-        const { data, error } = await _s.from('inventory').select('*').order('part_name');
-        if(error) return console.error(error);
+        document.getElementById('btn-reset-list').style.display = "none";
+        const { data, error } = await _s.from('inventory').select('*').order('part_id');
+        if(error) return;
 
         const body = document.getElementById('inventory-body');
         body.innerHTML = "";
-        let count = 0, low = 0, value = 0;
+        let count=0, low=0, value=0;
 
         data.forEach(item => {
             count++;
-            const isLow = item.stock_quantity <= 5;
+            const min = item.reorder_level || 5; 
+            const isLow = item.stock_quantity <= min;
             if(isLow) low++;
             value += (item.stock_quantity * (item.unit_price || 0));
 
             body.innerHTML += `
-                <tr>
+                <tr data-low="${isLow}">
                     <td><b>${item.part_id}</b></td>
                     <td>${item.part_name}</td>
                     <td>${item.stock_quantity}</td>
+                    <td>${min}</td>
                     <td>$${(item.unit_price || 0).toFixed(2)}</td>
                     <td><span class="badge" style="background:${isLow ? '#e74c3c' : '#27ae60'}">${isLow ? 'LOW STOCK' : 'OK'}</span></td>
-                    <td><button class="btn-edit" onclick="editItem('${item.part_id}', '${item.part_name}', ${item.stock_quantity}, ${item.unit_price})">EDIT</button></td>
+                    <td><button class="btn-edit" onclick="editItem('${item.part_id}','${item.part_name}',${item.stock_quantity},${item.unit_price},${min})">EDIT</button></td>
                 </tr>`;
         });
         document.getElementById('stat-count').innerText = count;
@@ -180,107 +181,89 @@
         document.getElementById('stat-value').innerText = "$" + value.toLocaleString();
     }
 
-    // --- LOAD MOVEMENT LOGS ---
-    async function loadMovement(mode) {
-        if (mode === 'out') {
-            const tbody = document.getElementById('out-body');
-            tbody.innerHTML = "<tr><td colspan='5' style='text-align:center'>Loading issued parts...</td></tr>";
-            const { data } = await _s.from('part_requests').select('*').eq('status', 'ISSUED').order('request_time', {ascending: false});
-            
-            tbody.innerHTML = data.map(o => `
-                <tr>
-                    <td>${new Date(o.request_time).toLocaleString('en-GB')}</td>
-                    <td>${o.part_name}</td>
-                    <td><b style="color:#e67e22;">-${o.quantity}</b></td>
-                    <td>JOB #${o.job_id}</td>
-                    <td>${o.issued_by || 'Garage Staff'}</td>
-                </tr>`).join('');
-        } else {
-            const tbody = document.getElementById('in-body');
-            tbody.innerHTML = "<tr><td colspan='5' style='text-align:center'>Loading purchase logs...</td></tr>";
-            const { data, error } = await _s.from('transaction_log').select('*').eq('type', 'IN').order('created_at', {ascending: false});
-            
-            if(error) { tbody.innerHTML = "Error loading logs."; return; }
-
-            tbody.innerHTML = data.map(i => `
-                <tr>
-                    <td>${new Date(i.created_at).toLocaleString('en-GB')}</td>
-                    <td>${i.part_name}</td>
-                    <td><b style="color:#27ae60;">+${i.quantity}</b></td>
-                    <td>${i.reference || 'Stock Arrival'}</td>
-                    <td>${i.staff_name || 'Admin'}</td>
-                </tr>`).join('');
-        }
+    function showShoppingList() {
+        const rows = document.querySelectorAll('#inventory-body tr');
+        let found = 0;
+        rows.forEach(r => {
+            const isLow = r.getAttribute('data-low') === "true";
+            r.style.display = isLow ? "" : "none";
+            if(isLow) found++;
+        });
+        document.getElementById('btn-reset-list').style.display = "inline-block";
+        if(found === 0) alert("No items currently below reorder levels!");
     }
 
-    // --- SAVE & LOG MOVEMENT ---
     async function savePart() {
         const id = document.getElementById('part-id').value;
         const name = document.getElementById('part-name').value;
         const qty = parseInt(document.getElementById('part-qty').value);
         const price = parseFloat(document.getElementById('part-price').value);
+        const reorder = parseInt(document.getElementById('part-reorder').value) || 5;
 
-        if(!id || !name) return alert("Please fill Name and ID");
-
-        const partData = { part_id: id, part_name: name, stock_quantity: qty, unit_price: price };
+        const partData = { part_id: id, part_name: name, stock_quantity: qty, unit_price: price, reorder_level: reorder };
 
         let res;
-        if(isEditing) {
-            res = await _s.from('inventory').update(partData).eq('part_id', id);
-        } else {
-            res = await _s.from('inventory').insert([partData]);
-        }
+        if(isEditing) res = await _s.from('inventory').update(partData).eq('part_id', id);
+        else res = await _s.from('inventory').insert([partData]);
 
-        if(res.error) return alert("Inventory Error: " + res.error.message);
+        if(res.error) return alert(res.error.message);
 
-        // Calculate and Log "IN" movement
         let logQty = isEditing ? (qty - originalQty) : qty;
-
         if (logQty > 0) {
-            const { error: logErr } = await _s.from('transaction_log').insert([{
-                part_id: id, 
-                part_name: name, 
-                type: 'IN', 
-                quantity: logQty, 
-                reference: isEditing ? 'Manual Stock Top-up' : 'New Part Initial Entry', 
-                staff_name: 'GM-Admin'
-            }]);
-
-            if (logErr) alert("Inventory saved, but LOGGING failed: " + logErr.message);
+            await _s.from('transaction_log').insert([{part_id:id, part_name:name, type:'IN', quantity:logQty, reference:'Purchase/Add', staff_name:'Admin'}]);
         }
-
-        alert("Database Updated Successfully!");
-        closeModal();
-        loadInventory();
+        closeModal(); loadInventory();
     }
 
-    // --- MODAL UTILS ---
-    function openModal() {
-        isEditing = false;
-        document.getElementById('modal-title').innerText = "Add New Part";
-        document.getElementById('part-id').disabled = false;
-        document.getElementById('part-id').value = "";
-        document.getElementById('part-name').value = "";
-        document.getElementById('part-qty').value = "";
-        document.getElementById('part-price').value = "";
-        document.getElementById('part-modal').style.display = 'flex';
+    async function loadLogs(mode) {
+        const target = mode === 'in' ? 'in-body' : 'out-body';
+        const tbody = document.getElementById(target);
+        tbody.innerHTML = "<tr><td colspan='5' style='text-align:center'>Loading...</td></tr>";
+
+        if(mode === 'out') {
+            const { data } = await _s.from('part_requests').select('*').eq('status','ISSUED').order('request_time',{ascending:false});
+            tbody.innerHTML = data.map(o => `<tr><td>${new Date(o.request_time).toLocaleDateString()}</td><td>${o.part_name}</td><td style="color:red">-${o.quantity}</td><td>#${o.job_id}</td><td>${o.issued_by}</td></tr>`).join('');
+        } else {
+            const { data } = await _s.from('transaction_log').select('*').eq('type','IN').order('created_at',{ascending:false});
+            tbody.innerHTML = data.map(i => `<tr><td>${new Date(i.created_at).toLocaleDateString()}</td><td>${i.part_name}</td><td style="color:green">+${i.quantity}</td><td>${i.reference}</td><td>${i.staff_name}</td></tr>`).join('');
+        }
     }
 
-    function editItem(id, name, qty, price) {
-        isEditing = true;
-        originalQty = qty; // Important to calculate the difference
-        document.getElementById('modal-title').innerText = "Edit / Update Stock";
+    async function loadAnalytics() {
+        const { data: issues } = await _s.from('part_requests').select('part_name, quantity, issued_by').eq('status', 'ISSUED');
+        if(!issues) return;
+        const mechMap = {}, partMap = {};
+        issues.forEach(i => {
+            const m = i.issued_by || "Unknown";
+            mechMap[m] = (mechMap[m] || 0) + i.quantity;
+            partMap[i.part_name] = (partMap[i.part_name] || 0) + i.quantity;
+        });
+
+        document.getElementById('mechanic-list').innerHTML = Object.entries(mechMap).sort((a,b)=>b[1]-a[1]).map(([n,q])=>`<div class="list-item"><span>${n}</span><b>${q} units</b></div>`).join('');
+        document.getElementById('top-parts-list').innerHTML = Object.entries(partMap).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,q])=>`<div class="list-item"><span>${n}</span><b>${q} units</b></div>`).join('');
+    }
+
+    function editItem(id, name, qty, price, reorder) {
+        isEditing = true; originalQty = qty;
         document.getElementById('part-id').value = id;
         document.getElementById('part-id').disabled = true;
         document.getElementById('part-name').value = name;
         document.getElementById('part-qty').value = qty;
         document.getElementById('part-price').value = price;
+        document.getElementById('part-reorder').value = reorder;
         document.getElementById('part-modal').style.display = 'flex';
     }
 
+    function filterInventory() {
+        const idV = document.getElementById('search-id').value.toUpperCase();
+        const nameV = document.getElementById('search-name').value.toUpperCase();
+        document.querySelectorAll('#inventory-body tr').forEach(r => {
+            r.style.display = (r.cells[0].innerText.includes(idV) && r.cells[1].innerText.toUpperCase().includes(nameV)) ? "" : "none";
+        });
+    }
+
+    function openModal() { isEditing=false; document.getElementById('part-id').disabled=false; document.getElementById('part-id').value=""; document.getElementById('part-name').value=""; document.getElementById('part-qty').value=""; document.getElementById('part-price').value=""; document.getElementById('part-reorder').value="5"; document.getElementById('part-modal').style.display='flex'; }
     function closeModal() { document.getElementById('part-modal').style.display = 'none'; }
-    
-    // Auto-load on startup
     loadInventory();
 </script>
 </body>

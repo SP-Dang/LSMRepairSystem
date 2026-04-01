@@ -70,37 +70,41 @@
         const logBox = document.getElementById('debug-log');
         const countBox = document.getElementById('job-count');
         
-        logBox.innerText = "Status: Connecting to Database...";
+        logBox.innerText = "Status: Filtering for Active Jobs...";
 
-        // TRY FETCHING - We use 'job_cards' (lowercase)
-        const { data: jobs, error } = await _s.from('job_cards').select('*');
+        // NEW FILTER: .neq('current_status', 'FINISHED') 
+        // This stops old jobs from showing up!
+        const { data: jobs, error } = await _s
+            .from('job_cards')
+            .select('*')
+            .neq('current_status', 'FINISHED') 
+            .order('created_at', { ascending: false });
         
         if (error) {
             logBox.innerText = "❌ ERROR: " + error.message;
-            logBox.style.color = "red";
             return;
         }
 
-        if (!jobs || jobs.length === 0) {
-            logBox.innerText = "⚠️ Connected, but NO DATA found in 'job_cards' table.";
-            countBox.innerText = "0 Jobs Found";
-            return;
-        }
-
-        // Clear columns
+        // Clear all columns
         document.getElementById('col-RECEPTION').innerHTML = "";
         document.getElementById('col-IN_REPAIR').innerHTML = "";
         document.getElementById('col-PDI').innerHTML = "";
         document.getElementById('col-COMPLETED').innerHTML = "";
 
-        logBox.innerText = `✅ Found ${jobs.length} jobs. Sorting now...`;
+        if (!jobs || jobs.length === 0) {
+            logBox.innerText = "✅ Workshop Clear: All jobs are finished!";
+            countBox.innerText = "0 Active Jobs";
+            return;
+        }
+
+        logBox.innerText = `✅ Showing ${jobs.length} Active Jobs...`;
         countBox.innerText = jobs.length + " Active Jobs";
 
         jobs.forEach(job => {
-            // We force everything to uppercase and remove spaces to prevent errors
             const status = String(job.current_status || '').toUpperCase().trim();
-            let targetId = 'col-RECEPTION'; // Default fallback
+            let targetId = 'col-RECEPTION'; 
 
+            // Sorting logic remains the same
             if (status.includes('QUEUED') || status.includes('RECEPTION') || status.includes('WAITING')) {
                 targetId = 'col-RECEPTION';
             } else if (status.includes('REPAIR') || status.includes('WORKING')) {
@@ -125,7 +129,7 @@
             }
         });
     }
-
+    
     loadLiveView();
     setInterval(loadLiveView, 20000); // Auto-refresh every 20 seconds
 </script>

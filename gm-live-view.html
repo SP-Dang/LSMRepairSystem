@@ -7,19 +7,29 @@
         .container{max-width:100%; margin:0 auto;}
         .header{display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;}
         
-        /* Narrower Columns for better fit */
+        /* Board Layout */
         .board{display:flex; gap:12px; overflow-x:auto; padding-bottom:20px; align-items: flex-start;}
-        .column{background:#1e1e1e; min-width:240px; max-width:260px; border-radius:10px; padding:12px; border-top:4px solid #444; flex-shrink: 0;}
+        .column{background:#1e1e1e; min-width:240px; max-width:260px; border-radius:10px; padding:12px; border-top:4px solid #444; flex-shrink: 0; min-height: 400px;}
         
         .column-reception{border-color:#3498db;}
         .column-repair{border-color:#f1c40f;}
         .column-pdi{border-color:#e67e22;}
-        .column-ready{border-color:#27ae60;}
         
+        /* Special Styling for History Column */
+        .column-history{
+            background: rgba(255,255,255,0.03); 
+            border-top: 4px solid #95a5a6; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            text-align: center;
+        }
+
         h3{font-size:14px; margin-top:0; text-transform:uppercase; letter-spacing:1px; margin-bottom:15px;}
 
-        /* Slimmer, more compact cards */
-        .job-card{background:#2a2a2a; padding:12px; border-radius:8px; margin-bottom:10px; box-shadow:0 4px 6px rgba(0,0,0,0.4); border-left:4px solid #555; transition: 0.2s;}
+        /* Slim cards */
+        .job-card{background:#2a2a2a; padding:12px; border-radius:8px; margin-bottom:10px; box-shadow:0 4px 6px rgba(0,0,0,0.4); border-left:4px solid #555; transition: 0.2s; text-align: left;}
         .job-card:hover{transform: scale(1.02); background:#333;}
         
         .plate{font-size:16px; font-weight:bold; color:#fff; display:block; margin-bottom:4px;}
@@ -28,6 +38,9 @@
         .symptoms{font-size:10px; color:#777; margin-top:8px; font-style:italic; border-top:1px solid #3d3d3d; padding-top:5px;}
         
         .btn-back{text-decoration:none; color:#f1c40f; font-weight:bold; border:1px solid #f1c40f; padding:5px 12px; border-radius:5px; font-size:12px;}
+        .btn-history{background: #27ae60; color: white; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; font-size: 13px; transition: 0.3s; width: 80%;}
+        .btn-history:hover{background: #2ecc71; transform: translateY(-2px);}
+        
         #debug-log{font-size:10px; color: #555; margin-top:10px;}
     </style>
 </head><body>
@@ -46,21 +59,30 @@
             <h3 style="color:#3498db">Waiting / Queued</h3>
             <div id="col-RECEPTION"></div>
         </div>
+
         <div class="column column-repair">
             <h3 style="color:#f1c40f">In Repair</h3>
             <div id="col-IN_REPAIR"></div>
         </div>
+
         <div class="column column-pdi">
             <h3 style="color:#e67e22">PDI Inspection</h3>
             <div id="col-PDI"></div>
         </div>
-        <div class="column column-ready">
-            <h3 style="color:#27ae60">Ready</h3>
-            <div id="col-COMPLETED"></div>
+
+        <div class="column column-history">
+            <h3 style="color:#95a5a6">Completed</h3>
+            <div style="font-size: 40px; margin-bottom: 15px;">📜</div>
+            <p style="font-size: 11px; color: #666; margin-bottom: 20px; padding: 0 10px;">
+                All released vehicles are archived in the repair history log.
+            </p>
+            <a href="repair-history.html" class="btn-history">VIEW HISTORY →</a>
         </div>
     </div>
+    
     <div id="debug-log">System Initializing...</div>
 </div>
+
 <script>
     const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
@@ -70,59 +92,56 @@
         const logBox = document.getElementById('debug-log');
         const countBox = document.getElementById('job-count');
         
-        logBox.innerText = "Status: Filtering for Active Jobs...";
+        logBox.innerText = "Status: Refreshing Active Workshop Floor...";
 
-        // REMOVED .order('created_at') to prevent the error
-        // We only filter for jobs that are NOT finished
+        // Filter: Hide FINISHED and READY/COMPLETED jobs from this view
         const { data: jobs, error } = await _s
             .from('job_cards')
             .select('*')
-            .neq('current_status', 'FINISHED');
+            .not('current_status', 'in', '("FINISHED","READY","COMPLETED")');
         
         if (error) {
             logBox.innerText = "❌ ERROR: " + error.message;
-            logBox.style.color = "#e74c3c";
             return;
         }
 
-        // Clear all columns
+        // Clear existing cards
         document.getElementById('col-RECEPTION').innerHTML = "";
         document.getElementById('col-IN_REPAIR').innerHTML = "";
         document.getElementById('col-PDI').innerHTML = "";
-        document.getElementById('col-COMPLETED').innerHTML = "";
 
         if (!jobs || jobs.length === 0) {
-            logBox.innerText = "✅ Workshop Clear: All jobs are finished!";
+            logBox.innerText = "✅ Workshop Floor is clear.";
             countBox.innerText = "0 Active Jobs";
             return;
         }
 
-        logBox.innerText = `✅ Showing ${jobs.length} Active Jobs...`;
+        logBox.innerText = `✅ Last updated: ${new Date().toLocaleTimeString()}`;
         countBox.innerText = jobs.length + " Active Jobs";
 
         jobs.forEach(job => {
             const status = String(job.current_status || '').toUpperCase().trim();
-            let targetId = 'col-RECEPTION'; 
+            let targetId = null;
 
-            if (status.includes('QUEUED') || status.includes('RECEPTION') || status.includes('WAITING')) {
+            // Logic to place cards in the correct active column
+            if (status.includes('QUEUED') || status.includes('RECEPTION')) {
                 targetId = 'col-RECEPTION';
             } else if (status.includes('REPAIR') || status.includes('WORKING')) {
                 targetId = 'col-IN_REPAIR';
             } else if (status.includes('PDI')) {
                 targetId = 'col-PDI';
-            } else if (status.includes('COMPLETED') || status.includes('READY')) {
-                targetId = 'col-COMPLETED';
             }
 
-            const container = document.getElementById(targetId);
-            if (container) {
+            // Only render the card if it belongs to an active workshop column
+            if (targetId) {
+                const container = document.getElementById(targetId);
                 const card = document.createElement('div');
                 card.className = 'job-card';
                 card.innerHTML = `
                     <span class="plate">${job.vehicle_plate}</span>
-                    <span class="details">${job.core_type || 'Taxi'}</span>
-                    <span class="mech-name">👤 ${job.assigned_mechanic_id || 'Pending'}</span>
-                    <div class="symptoms">${job.symptoms || 'No notes'}</div>
+                    <span class="details">Core: ${job.core_type || '2'}</span>
+                    <span class="mech-name">👤 ${job.assigned_mechanic_id || 'Waiting...'}</span>
+                    <div class="symptoms">${job.symptoms || 'General Checkup'}</div>
                 `;
                 container.appendChild(card);
             }

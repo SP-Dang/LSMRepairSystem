@@ -3,50 +3,63 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <meta charset="UTF-8"><title>LSM - LIVE WORKSHOP VIEW</title>
     <style>
-        body{font-family:'Segoe UI',sans-serif; background:#1a1a1a; color:#eee; margin:0; padding:20px;}
-        .container{max-width:1200px; margin:0 auto;}
-        .header{display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:2px solid #333; padding-bottom:15px;}
-        .board{display:flex; gap:20px; overflow-x:auto; padding-bottom:20px;}
-        .column{background:#252525; min-width:300px; border-radius:10px; padding:15px; border-top:4px solid #444;}
+        body{font-family:'Segoe UI',sans-serif; background:#121212; color:#eee; margin:0; padding:15px;}
+        .container{max-width:100%; margin:0 auto;}
+        .header{display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;}
+        
+        /* Narrower Columns for better fit */
+        .board{display:flex; gap:12px; overflow-x:auto; padding-bottom:20px; align-items: flex-start;}
+        .column{background:#1e1e1e; min-width:240px; max-width:260px; border-radius:10px; padding:12px; border-top:4px solid #444; flex-shrink: 0;}
+        
         .column-reception{border-color:#3498db;}
         .column-repair{border-color:#f1c40f;}
         .column-pdi{border-color:#e67e22;}
         .column-ready{border-color:#27ae60;}
-        .job-card{background:#333; padding:15px; border-radius:8px; margin-bottom:15px; box-shadow:0 4px 6px rgba(0,0,0,0.3); border-left:4px solid #555;}
-        .plate{font-size:18px; font-weight:bold; color:#fff; display:block;}
-        .mech-name{font-size:12px; color:#f1c40f; margin-top:5px; display:block;}
-        .symptoms{font-size:11px; color:#888; margin-top:8px; font-style:italic;}
-        .btn-back{text-decoration:none; color:#f1c40f; font-weight:bold; border:1px solid #f1c40f; padding:5px 15px; border-radius:5px;}
+        
+        h3{font-size:14px; margin-top:0; text-transform:uppercase; letter-spacing:1px; margin-bottom:15px;}
+
+        /* Slimmer, more compact cards */
+        .job-card{background:#2a2a2a; padding:12px; border-radius:8px; margin-bottom:10px; box-shadow:0 4px 6px rgba(0,0,0,0.4); border-left:4px solid #555; transition: 0.2s;}
+        .job-card:hover{transform: scale(1.02); background:#333;}
+        
+        .plate{font-size:16px; font-weight:bold; color:#fff; display:block; margin-bottom:4px;}
+        .details{font-size:11px; color:#aaa; margin-bottom:8px; display:block;}
+        .mech-name{font-size:11px; color:#f1c40f; font-weight:bold;}
+        .symptoms{font-size:10px; color:#777; margin-top:8px; font-style:italic; border-top:1px solid #3d3d3d; padding-top:5px;}
+        
+        .btn-back{text-decoration:none; color:#f1c40f; font-weight:bold; border:1px solid #f1c40f; padding:5px 12px; border-radius:5px; font-size:12px;}
+        #debug-log{font-size:10px; color: #555; margin-top:10px;}
     </style>
 </head><body>
 
 <div class="container">
     <div class="header">
-        <h1>📊 Live Workshop View</h1>
-        <a href="gm-menu.html" class="btn-back">⬅️ BACK TO GM MENU</a>
+        <h1>📊 Workshop Live</h1>
+        <div>
+            <span id="job-count" style="font-size:12px; margin-right:15px; color:#888;">Updating...</span>
+            <a href="gm-menu.html" class="btn-back">⬅️ BACK</a>
+        </div>
     </div>
 
     <div class="board">
         <div class="column column-reception">
-            <h3 style="color:#3498db">WAITING (NEW)</h3>
+            <h3 style="color:#3498db">Waiting / Queued</h3>
             <div id="col-RECEPTION"></div>
         </div>
-
         <div class="column column-repair">
-            <h3 style="color:#f1c40f">IN REPAIR</h3>
+            <h3 style="color:#f1c40f">In Repair</h3>
             <div id="col-IN_REPAIR"></div>
         </div>
-
         <div class="column column-pdi">
-            <h3 style="color:#e67e22">PDI INSPECTION</h3>
+            <h3 style="color:#e67e22">PDI Inspection</h3>
             <div id="col-PDI"></div>
         </div>
-
         <div class="column column-ready">
-            <h3 style="color:#27ae60">READY FOR PICKUP</h3>
+            <h3 style="color:#27ae60">Ready</h3>
             <div id="col-COMPLETED"></div>
         </div>
     </div>
+    <div id="debug-log">System Initializing...</div>
 </div>
 
 <script>
@@ -54,66 +67,58 @@
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
     const _s = supabase.createClient(u, k);
 
+    function log(msg) { document.getElementById('debug-log').innerText = "Status: " + msg; }
+
     async function loadLiveView() {
-        console.log("Refreshing Live View...");
+        log("Fetching data from Supabase...");
         const { data: jobs, error } = await _s.from('job_cards').select('*').order('created_at', { ascending: false });
         
-        // 1. Clear all columns
+        if (error) {
+            log("Error: " + error.message);
+            return;
+        }
+
+        // Clear columns
         document.getElementById('col-RECEPTION').innerHTML = "";
         document.getElementById('col-IN_REPAIR').innerHTML = "";
         document.getElementById('col-PDI').innerHTML = "";
         document.getElementById('col-COMPLETED').innerHTML = "";
 
-        if (error) {
-            console.error("Supabase Error:", error);
-            return;
-        }
-
         if (!jobs || jobs.length === 0) {
-            console.log("No jobs found in database.");
+            log("Success: Connected, but 0 jobs found.");
+            document.getElementById('job-count').innerText = "0 Active Jobs";
             return;
         }
 
-        // 2. Map statuses to columns
+        log("Processing " + jobs.length + " jobs...");
+        document.getElementById('job-count').innerText = jobs.length + " Active Jobs";
+
         jobs.forEach(job => {
-            const rawStatus = (job.current_status || 'UNKNOWN').toUpperCase().trim();
-            let targetColId = '';
+            const status = (job.current_status || 'QUEUED').toUpperCase().trim();
+            let targetId = 'col-RECEPTION';
 
-            // --- THE MAPPING LOGIC ---
-            if (rawStatus === 'QUEUED' || rawStatus === 'RECEPTION' || rawStatus === 'WAITING' || rawStatus === 'NEW') {
-                targetColId = 'col-RECEPTION';
-            } 
-            else if (rawStatus === 'IN_REPAIR' || rawStatus === 'REPAIRING' || rawStatus === 'WORKING') {
-                targetColId = 'col-IN_REPAIR';
-            } 
-            else if (rawStatus === 'PDI' || rawStatus === 'INSPECTION') {
-                targetColId = 'col-PDI';
-            } 
-            else if (rawStatus === 'COMPLETED' || rawStatus === 'READY' || rawStatus === 'DONE') {
-                targetColId = 'col-COMPLETED';
-            } 
-            else {
-                // Default to first column if status is unknown so you still see the vehicle
-                targetColId = 'col-RECEPTION';
-            }
+            if (['QUEUED', 'RECEPTION', 'WAITING', 'NEW'].includes(status)) targetId = 'col-RECEPTION';
+            else if (['IN_REPAIR', 'REPAIRING', 'WORKING'].includes(status)) targetId = 'col-IN_REPAIR';
+            else if (['PDI', 'INSPECTION'].includes(status)) targetId = 'col-PDI';
+            else if (['COMPLETED', 'READY', 'DONE'].includes(status)) targetId = 'col-COMPLETED';
 
-            const container = document.getElementById(targetColId);
+            const container = document.getElementById(targetId);
             if (container) {
                 const card = document.createElement('div');
                 card.className = 'job-card';
                 card.innerHTML = `
                     <span class="plate">${job.vehicle_plate}</span>
-                    <small style="color:#888">${job.core_type || 'Taxi Repair'}</small>
-                    <span class="mech-name">👤 Mechanic: ${job.assigned_mechanic_id || 'Not Assigned'}</span>
-                    <div class="symptoms">📝 ${job.symptoms || 'No symptoms noted'}</div>
+                    <span class="details">${job.core_type || 'General Service'}</span>
+                    <span class="mech-name">👤 ${job.assigned_mechanic_id || 'Waiting...'}</span>
+                    <div class="symptoms">${job.symptoms || 'No issues listed'}</div>
                 `;
                 container.appendChild(card);
             }
         });
+        log("Live View Updated at " + new Date().toLocaleTimeString());
     }
 
-    // Initial load
     loadLiveView();
-    // Refresh every 30 seconds
     setInterval(loadLiveView, 30000);
 </script>
+</body></html>

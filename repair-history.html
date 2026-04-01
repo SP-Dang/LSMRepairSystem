@@ -124,59 +124,115 @@
     }
 
     async function printJob(id) {
-        const { data: job, error } = await _s.from('job_cards').select('*').eq('id', id).single();
-        if (error || !job) return alert("Could not fetch job details for printing.");
+        // 1. Fetch Job Details
+        const { data: job, error: jobErr } = await _s.from('job_cards').select('*').eq('id', id).single();
+        
+        // 2. Fetch Issued Parts for this job
+        const { data: parts, error: partsErr } = await _s.from('part_requests')
+            .select('part_name, quantity, status')
+            .eq('job_id', id)
+            .eq('status', 'ISSUED'); // Only show parts actually given to the mechanic
+
+        if (jobErr || !job) return alert("Could not fetch job details for printing.");
 
         const printWin = window.open('', '_blank');
         const now = new Date().toLocaleString('en-GB');
 
+        // Create the Parts List HTML
+        let partsHTML = "<tr><td colspan='2' style='text-align:center; color:#888;'>No parts issued for this job.</td></tr>";
+        if (parts && parts.length > 0) {
+            partsHTML = parts.map(p => `
+                <tr>
+                    <td style="padding: 5px 0; border-bottom: 1px dashed #eee;">${p.part_name}</td>
+                    <td style="padding: 5px 0; border-bottom: 1px dashed #eee; text-align:right;">x${p.quantity}</td>
+                </tr>
+            `).join('');
+        }
+
         printWin.document.write(`
             <html>
             <head>
-                <title>Print Job Card - ${job.vehicle_plate}</title>
+                <title>LSM Job Card - ${job.vehicle_plate}</title>
                 <style>
-                    body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #000; }
-                    .header-title { font-size: 24px; font-weight: bold; text-align: center; margin-bottom: 20px; }
-                    .meta-info { font-size: 14px; margin-bottom: 5px; }
-                    hr { border: 0; border-top: 1px solid #000; margin: 15px 0; }
+                    @page { margin: 10mm; } /* Helps hide browser's about:blank header in some browsers */
+                    body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; color: #000; position: relative; min-height: 95vh; }
+                    .header-title { font-size: 28px; font-weight: 900; text-align: center; margin-bottom: 15px; color: #ff4500; text-transform: uppercase; letter-spacing: 2px; }
+                    .meta-info { font-size: 13px; margin-bottom: 5px; color: #333; }
+                    hr { border: 0; border-top: 2px solid #000; margin: 15px 0; }
                     .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
-                    .data-item { font-size: 15px; }
-                    .data-label { font-weight: bold; text-transform: uppercase; font-size: 12px; color: #555; }
-                    .footer { margin-top: 80px; display: flex; justify-content: space-between; }
-                    .sig-line { border-top: 1px solid #000; width: 200px; text-align: center; padding-top: 5px; font-weight: bold; }
+                    .data-label { font-weight: bold; text-transform: uppercase; font-size: 11px; color: #666; margin-bottom: 2px; }
+                    .data-value { font-size: 15px; font-weight: bold; }
+                    
+                    /* Parts Table Style */
+                    .parts-section { margin-top: 20px; }
+                    .parts-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                    .parts-table th { text-align: left; font-size: 11px; text-transform: uppercase; color: #666; border-bottom: 1px solid #000; padding-bottom: 5px; }
+                    
+                    .footer-sig { margin-top: 60px; display: flex; justify-content: space-between; }
+                    .sig-line { border-top: 1px solid #000; width: 220px; text-align: center; padding-top: 8px; font-weight: bold; font-size: 13px; }
+                    
+                    .powered-by { position: absolute; bottom: 0; left: 0; right: 0; text-align: center; font-size: 10px; color: #999; font-style: italic; }
                 </style>
             </head>
             <body>
                 <div class="header-title">LAO SMART MOBILITY</div>
-                <div class="meta-info"><strong>Job Card No:</strong> ${job.id}</div>
-                <div class="meta-info"><strong>Generated on:</strong> ${now}</div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div>
+                        <div class="meta-info"><strong>Job Card No:</strong> #${job.id}</div>
+                        <div class="meta-info"><strong>Generated on:</strong> ${now}</div>
+                    </div>
+                    <div style="text-align: right; font-size: 12px; font-weight: bold; border: 2px solid #000; padding: 5px 10px;">
+                        STATUS: ${job.current_status}
+                    </div>
+                </div>
                 
                 <hr>
                 
                 <div class="data-grid">
-                    <div class="data-item"><div class="data-label">Vehicle Plate</div><strong>${job.vehicle_plate}</strong></div>
-                    <div class="data-item"><div class="data-label">Core Type</div><strong>Core ${job.core_type}</strong></div>
-                    <div class="data-item"><div class="data-label">Mechanic</div><strong>${job.assigned_mechanic_id || 'Not Assigned'}</strong></div>
-                    <div class="data-item"><div class="data-label">PDI Inspector</div><strong>${job.pdi_by || 'Pending'}</strong></div>
-                    <div class="data-item" style="grid-column: span 2;"><div class="data-label">Symptoms / Notes</div><strong>${job.symptoms || 'None recorded'}</strong></div>
+                    <div class="data-item"><div class="data-label">Vehicle Plate</div><div class="data-value">${job.vehicle_plate}</div></div>
+                    <div class="data-item"><div class="data-label">Repair Category</div><div class="data-value">Core ${job.core_type}</div></div>
+                    <div class="data-item"><div class="data-label">Primary Mechanic</div><div class="data-value">${job.assigned_mechanic_id || '---'}</div></div>
+                    <div class="data-item"><div class="data-label">PDI Verified By</div><div class="data-value">${job.pdi_by || '---'}</div></div>
+                </div>
+
+                <div class="parts-section">
+                    <div class="data-label">Spare Parts Issued</div>
+                    <table class="parts-table">
+                        <thead>
+                            <tr><th>Part Name</th><th style="text-align:right;">Qty</th></tr>
+                        </thead>
+                        <tbody>${partsHTML}</tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top:20px;">
+                    <div class="data-label">Mechanic Observations / Symptoms</div>
+                    <div style="font-size: 14px; border: 1px solid #eee; padding: 10px; min-height: 50px;">${job.symptoms || 'General service performed.'}</div>
                 </div>
 
                 <hr>
 
-                <div class="footer">
+                <div class="footer-sig">
                     <div class="sig-line">Prepared by</div>
                     <div class="sig-line">General Manager</div>
                 </div>
 
+                <div class="powered-by">Powered by somphone.dang@gmail.com</div>
+
                 <script>
-                    window.onload = function() { window.print(); window.close(); }
+                    window.onload = function() { 
+                        window.print(); 
+                        // Note: Some browsers block self-closing windows, 
+                        // so we wait 500ms before attempting to close.
+                        setTimeout(() => { window.close(); }, 500); 
+                    }
                 <\/script>
             </body>
             </html>
         `);
         printWin.document.close();
     }
-
     function logout() {
         localStorage.clear();
         window.location.href = 'index.html';

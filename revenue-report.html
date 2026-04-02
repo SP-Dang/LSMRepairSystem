@@ -97,7 +97,7 @@
         // 1. Fetch Completed Job Cards
         const { data: jobs, error: jobErr } = await _s.from('job_cards')
             .select('*')
-            .eq('current_status', 'COMPLETED')
+            .eq('current_status', 'FINISHED')
             .gte('arrival_time', `${from}T00:00:00`)
             .lte('arrival_time', `${to}T23:59:59`);
 

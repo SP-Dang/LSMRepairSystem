@@ -183,7 +183,52 @@
     } else {
         partsHtml = "<p style='font-size:12px; color:#666;'>No parts were issued for this repair.</p>";
     }
+let partsHtml = "";
+    let partsSubtotal = 0;
+    const laborFee = job.labor_fee || 0; // Get the new labor fee
 
+    if (parts && parts.length > 0) {
+        partsHtml = `<table style="width:100%; border-collapse: collapse; margin-top: 15px; font-size: 12px;">
+            <thead>
+                <tr style="background: #f2f2f2; border-bottom: 2px solid #333;">
+                    <th style="text-align:left; padding: 8px;">Item / Service</th>
+                    <th style="text-align:center; padding: 8px;">Qty</th>
+                    <th style="text-align:right; padding: 8px;">Price</th>
+                    <th style="text-align:right; padding: 8px;">Total</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+        parts.forEach(p => {
+            const price = p.inventory ? p.inventory.unit_price : 0;
+            const lineTotal = p.quantity * price;
+            partsSubtotal += lineTotal;
+
+            partsHtml += `<tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 8px;">${p.part_name}</td>
+                <td style="text-align:center; padding: 8px;">${p.quantity}</td>
+                <td style="text-align:right; padding: 8px;">$${price.toFixed(2)}</td>
+                <td style="text-align:right; padding: 8px;">$${lineTotal.toFixed(2)}</td>
+            </tr>`;
+        });
+
+        // ADD THE LABOR ROW HERE
+        partsHtml += `
+            <tr style="background: #fafafa; font-style: italic;">
+                <td colspan="3" style="padding: 8px; text-align:right;">Service & Labor Fee:</td>
+                <td style="text-align:right; padding: 8px;">$${parseFloat(laborFee).toFixed(2)}</td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" style="text-align:right; padding: 10px; font-weight:bold; font-size:16px;">GRAND TOTAL:</td>
+                <td style="text-align:right; padding: 10px; font-weight:bold; font-size:16px; border-top: 2px solid #333;">
+                    $${(partsSubtotal + parseFloat(laborFee)).toFixed(2)}
+                </td>
+            </tr>
+        </tfoot>
+        </table>`;
+    }
     // 3. Create the Print Window
     const printWin = window.open('', '', 'width=800,height=900');
     printWin.document.write(`

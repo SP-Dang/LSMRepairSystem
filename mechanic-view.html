@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="en"><head>
+<html lang="en">
+<head>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <meta charset="UTF-8">
@@ -12,7 +13,6 @@
         .plate-no{font-size:24px;font-weight:bold;color:#fff;display:block;margin-bottom:5px}
         .symptoms-box{background:#1a1a1a;padding:10px;border-radius:6px;font-size:13px;color:#bbb;margin:10px 0}
         
-        /* Status Alert Styles */
         .status-container { margin-top: 15px; background: #111; border-radius: 8px; padding: 10px; font-size: 12px; }
         .status-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #222; }
         .status-row:last-child { border-bottom: none; }
@@ -21,7 +21,6 @@
         .tag-issued { background: #27ae60; color: #fff; }
         .tag-rejected { background: #e74c3c; color: #fff; }
 
-        /* Basket & Buttons */
         .btn-scan{width:100%;padding:12px;background:#f1c40f;color:#000;border:none;border-radius:8px;font-weight:bold;cursor:pointer;margin-top:5px}
         .basket-container { margin-top: 15px; background: #1a1a1a; border: 1px dashed #f1c40f; border-radius: 8px; overflow: hidden; display: none; }
         .basket-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #333; font-size: 13px; }
@@ -29,13 +28,13 @@
         .btn-send-all { width: 100%; background: #27ae60; color: white; border: none; padding: 12px; font-weight: bold; cursor: pointer; }
         .btn-done{width:100%;padding:15px;background:#27ae60;color:white;border:none;border-radius:8px;font-weight:bold;margin-top:15px;cursor:pointer}
         
-        /* Scanner Overlay */
         #scanner-container { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:1000; flex-direction:column; align-items:center; justify-content:center; }
         #reader { width: 300px; background: white; border-radius: 10px; overflow: hidden; }
         .close-scan { margin-top: 20px; padding: 10px 20px; background: #e74c3c; color: white; border: none; border-radius: 5px; font-weight: bold; }
         .logout-btn{background:transparent;border:1px solid #27ae60;color:#27ae60;padding:5px 10px;border-radius:5px;font-size:12px;text-decoration:none}
     </style>
-</head><body>
+</head>
+<body>
 
 <div id="scanner-container">
     <div id="reader"></div>
@@ -64,7 +63,7 @@
 
     let html5QrCode;
     let activeJobId = null;
-    let partBasket = [];
+    let partBasketMap = {}; // Stores baskets by Job ID to prevent "disappearing" data
 
     async function loadMyJobs() {
         const { data: jobs } = await _s.from('job_cards')
@@ -77,7 +76,6 @@
             return;
         }
 
-        // Fetch all part requests for these jobs to show alerts
         const { data: parts } = await _s.from('part_requests')
             .select('*').in('job_id', jobs.map(j => j.id));
 
@@ -85,7 +83,6 @@
         jobs.forEach(job => {
             const jobParts = parts ? parts.filter(p => p.job_id === job.id) : [];
             
-            // Build Warehouse Status Alert Box
             let statusHtml = "";
             if (jobParts.length > 0) {
                 statusHtml = `<div class="status-container"><b>WAREHOUSE UPDATES:</b>`;
@@ -116,6 +113,11 @@
                 <button class="btn-done" onclick="finishRepair(${job.id})">✅ REPAIR COMPLETED</button>
             `;
             list.appendChild(card);
+
+            // Re-render basket for this job if data exists in memory
+            if (partBasketMap[job.id]) {
+                renderBasket(job.id);
+            }
         });
     }
 
@@ -142,34 +144,57 @@
         const qty = prompt(`Item Found: ${name}\nEnter Quantity:`, "1");
 
         if(qty && !isNaN(qty)) {
-            partBasket.push({ id: cleanId, name: name, qty: parseInt(qty) });
-            renderBasket();
+            if(!partBasketMap[activeJobId]) partBasketMap[activeJobId] = [];
+            partBasketMap[activeJobId].push({ id: cleanId, name: name, qty: parseInt(qty) });
+            renderBasket(activeJobId);
         }
     }
 
-    function renderBasket() {
-        const div = document.getElementById('basket-display-' + activeJobId);
+    function renderBasket(jobId) {
+        const div = document.getElementById('basket-display-' + jobId);
         if(!div) return;
-        if(partBasket.length === 0) { div.style.display = "none"; return; }
+        
+        const basket = partBasketMap[jobId] || [];
+        if(basket.length === 0) { div.style.display = "none"; return; }
 
         div.style.display = "block";
         let html = `<div style="padding:10px; font-size:11px; color:#f1c40f; font-weight:bold; border-bottom:1px solid #333">🛒 PENDING SEND:</div>`;
-        partBasket.forEach((item, i) => {
+        basket.forEach((item, i) => {
             html += `<div class="basket-item">
                 <span><b>${item.qty}x</b> ${item.name}</span>
-                <button class="btn-remove" onclick="removeFromBasket(${i})">X</button>
+                <button class="btn-remove" onclick="removeFromBasket(${jobId}, ${i})">X</button>
             </div>`;
         });
-        html += `<button class="btn-send-all" onclick="sendBatchRequest()">🚀 SEND TO WAREHOUSE</button>`;
+        html += `<button class="btn-send-all" onclick="sendBatchRequest(${jobId})">🚀 SEND TO WAREHOUSE</button>`;
         div.innerHTML = html;
     }
 
-    function removeFromBasket(i) { partBasket.splice(i, 1); renderBasket(); }
+    function removeFromBasket(jobId, index) { 
+        partBasketMap[jobId].splice(index, 1); 
+        renderBasket(jobId); 
+    }
 
-    async function sendBatchRequest() {
-        const inserts = partBasket.map(i => ({ job_id: activeJobId, part_id: i.id, part_name: i.name, quantity: i.qty, requested_by: currentMech, status: 'PENDING' }));
+    async function sendBatchRequest(jobId) {
+        const basket = partBasketMap[jobId];
+        if(!basket || basket.length === 0) return;
+
+        const inserts = basket.map(i => ({ 
+            job_id: jobId, 
+            part_id: i.id, 
+            part_name: i.name, 
+            quantity: i.qty, 
+            requested_by: currentMech, 
+            status: 'PENDING' 
+        }));
+
         const { error } = await _s.from('part_requests').insert(inserts);
-        if(!error) { alert("Sent!"); partBasket = []; loadMyJobs(); }
+        if(!error) { 
+            alert("Sent to Warehouse!"); 
+            delete partBasketMap[jobId];
+            loadMyJobs(); 
+        } else {
+            alert("Error: " + error.message);
+        }
     }
 
     async function finishRepair(jobId) {
@@ -181,6 +206,7 @@
     function logout() { localStorage.clear(); window.location.href = 'index.html'; }
 
     loadMyJobs();
-    setInterval(loadMyJobs, 20000); // Auto-refresh every 20 seconds
+    setInterval(loadMyJobs, 20000); 
 </script>
-</body></html>
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta charset="UTF-8"><title>LSM - REVENUE REPORT</title>
+    <style>
+        body{font-family:'Segoe UI',sans-serif; background:#f4f7f6; margin:0; padding:20px;}
+        .container{max-width:1000px; margin:0 auto;}
+        .header{display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;}
+        
+        /* Stats Grid */
+        .stats-grid{display:grid; grid-template-columns:repeat(3, 1fr); gap:20px; margin-bottom:30px;}
+        .stat-card{background:#fff; padding:20px; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.05); border-top:5px solid #1a1a1a;}
+        .stat-card h3{margin:0; font-size:12px; color:#888; text-transform:uppercase;}
+        .stat-card .value{font-size:28px; font-weight:bold; color:#1a1a1a; margin-top:10px;}
+        
+        /* Filter Bar */
+        .filter-bar{background:#fff; padding:15px; border-radius:10px; margin-bottom:20px; display:flex; gap:15px; align-items:flex-end;}
+        .filter-group{display:flex; flex-direction:column; gap:5px;}
+        label{font-size:11px; font-weight:bold; color:#666;}
+        input{padding:8px; border:1px solid #ddd; border-radius:5px;}
+        .btn-run{padding:10px 20px; background:#27ae60; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;}
+        
+        table{width:100%; border-collapse:collapse; background:#fff; border-radius:10px; overflow:hidden;}
+        th{background:#f8f9fa; padding:12px; text-align:left; font-size:13px; border-bottom:2px solid #eee;}
+        td{padding:12px; border-bottom:1px solid #eee; font-size:14px;}
+        .btn-back{text-decoration:none; color:#1a1a1a; border:1px solid #1a1a1a; padding:5px 15px; border-radius:5px; font-size:14px; font-weight:bold;}
+    </style>
+</head><body>
+
+<div class="container">
+    <div class="header">
+        <h1>📈 Revenue Overview</h1>
+        <a href="gm-menu.html" class="btn-back">⬅️ MENU</a>
+    </div>
+
+    <div class="filter-bar">
+        <div class="filter-group">
+            <label>FROM DATE</label>
+            <input type="date" id="date-from">
+        </div>
+        <div class="filter-group">
+            <label>TO DATE</label>
+            <input type="date" id="date-to">
+        </div>
+        <button class="btn-run" onclick="generateReport()">RUN REPORT</button>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card" style="border-color: #3498db;">
+            <h3>Service/Labor Revenue</h3>
+            <div class="value" id="total-labor">$0.00</div>
+        </div>
+        <div class="stat-card" style="border-color: #e67e22;">
+            <h3>Parts Revenue</h3>
+            <div class="value" id="total-parts">$0.00</div>
+        </div>
+        <div class="stat-card" style="border-color: #27ae60;">
+            <h3>Total Gross Revenue</h3>
+            <div class="value" id="total-combined">$0.00</div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Plate Number</th>
+                <th>Labor Fee</th>
+                <th>Parts Total</th>
+                <th>Job Total</th>
+            </tr>
+        </thead>
+        <tbody id="report-body">
+            </tbody>
+    </table>
+</div>
+
+<script>
+    const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
+    const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
+    const _s = supabase.createClient(u, k);
+
+    // Default dates to current month
+    window.onload = () => {
+        const now = new Date();
+        document.getElementById('date-to').value = now.toISOString().split('T')[0];
+        now.setDate(1); // First of month
+        document.getElementById('date-from').value = now.toISOString().split('T')[0];
+        generateReport();
+    };
+
+    async function generateReport() {
+        const from = document.getElementById('date-from').value;
+        const to = document.getElementById('date-to').value;
+        const tbody = document.getElementById('report-body');
+        
+        // 1. Fetch Completed Job Cards
+        const { data: jobs, error: jobErr } = await _s.from('job_cards')
+            .select('*')
+            .eq('current_status', 'COMPLETED')
+            .gte('arrival_time', `${from}T00:00:00`)
+            .lte('arrival_time', `${to}T23:59:59`);
+
+        if (jobErr) return alert(jobErr.message);
+
+        let laborSum = 0;
+        let partsSum = 0;
+        tbody.innerHTML = "";
+
+        for (let job of jobs) {
+            // 2. Fetch Parts for each job to calculate total
+            const { data: parts } = await _s.from('part_requests')
+                .select('quantity, inventory(unit_price)')
+                .eq('job_id', job.id)
+                .eq('status', 'ISSUED');
+
+            let jobPartsTotal = 0;
+            if (parts) {
+                parts.forEach(p => {
+                    const price = p.inventory ? p.inventory.unit_price : 0;
+                    jobPartsTotal += (p.quantity * price);
+                });
+            }
+
+            const laborFee = parseFloat(job.labor_fee || 0);
+            const jobGrandTotal = laborFee + jobPartsTotal;
+
+            laborSum += laborFee;
+            partsSum += jobPartsTotal;
+
+            // Add row to table
+            tbody.innerHTML += `
+                <tr>
+                    <td>${new Date(job.arrival_time).toLocaleDateString()}</td>
+                    <td style="font-weight:bold">${job.vehicle_plate}</td>
+                    <td>$${laborFee.toFixed(2)}</td>
+                    <td>$${jobPartsTotal.toFixed(2)}</td>
+                    <td style="font-weight:bold; color:#27ae60;">$${jobGrandTotal.toFixed(2)}</td>
+                </tr>
+            `;
+        }
+
+        // Update Stat Cards
+        document.getElementById('total-labor').innerText = `$${laborSum.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+        document.getElementById('total-parts').innerText = `$${partsSum.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+        document.getElementById('total-combined').innerText = `$${(laborSum + partsSum).toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+    }
+</script>
+</body></html>

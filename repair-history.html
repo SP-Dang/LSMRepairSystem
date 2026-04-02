@@ -124,12 +124,16 @@
     }
 
     async function printJob(jobId) {
-    // 1. Fetch Job Details
-    const { data: job } = await _s.from('job_cards').select('*').eq('id', jobId).single();
-    
-    // 2. Fetch Issued Parts AND their prices from Inventory
-    // We use a 'left join' style select to get the unit_price from the inventory table
-    const { data: parts, error } = await _s.from('part_requests')
+    // 1. Fetch Job Details (including the new labor_fee)
+    const { data: job, error: jobErr } = await _s.from('job_cards')
+        .select('*')
+        .eq('id', jobId)
+        .single();
+
+    if (!job || jobErr) return alert("Job not found");
+
+    // 2. Fetch Issued Parts
+    const { data: parts, error: partsErr } = await _s.from('part_requests')
         .select(`
             part_name,
             quantity,
@@ -138,29 +142,29 @@
         .eq('job_id', jobId)
         .eq('status', 'ISSUED');
 
-    if (!job) return alert("Job not found");
-
     let partsHtml = "";
-    let grandTotal = 0;
+    let partsSubtotal = 0;
+    const laborFee = parseFloat(job.labor_fee || 0);
 
+    // 3. Build the Table
+    partsHtml = `
+        <table style="width:100%; border-collapse: collapse; margin-top: 15px; font-size: 12px;">
+            <thead>
+                <tr style="background: #f2f2f2; border-bottom: 2px solid #333;">
+                    <th style="text-align:left; padding: 8px;">Item / Service Description</th>
+                    <th style="text-align:center; padding: 8px;">Qty</th>
+                    <th style="text-align:right; padding: 8px;">Price</th>
+                    <th style="text-align:right; padding: 8px;">Total</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+    // Add Parts Rows
     if (parts && parts.length > 0) {
-        partsHtml = `
-            <table style="width:100%; border-collapse: collapse; margin-top: 15px; font-size: 12px;">
-                <thead>
-                    <tr style="background: #f2f2f2; border-bottom: 2px solid #333;">
-                        <th style="text-align:left; padding: 8px;">Part NAME</th>
-                        <th style="text-align:center; padding: 8px;">Qty</th>
-                        <th style="text-align:right; padding: 8px;">Unit Price</th>
-                        <th style="text-align:right; padding: 8px;">Total</th>
-                    </tr>
-                </thead>
-                <tbody>`;
-
         parts.forEach(p => {
-            // Get price from the joined inventory data
             const price = p.inventory ? p.inventory.unit_price : 0;
             const lineTotal = p.quantity * price;
-            grandTotal += lineTotal;
+            partsSubtotal += lineTotal;
 
             partsHtml += `
                 <tr style="border-bottom: 1px solid #ddd;">
@@ -170,71 +174,33 @@
                     <td style="text-align:right; padding: 8px;">$${lineTotal.toFixed(2)}</td>
                 </tr>`;
         });
-
-        partsHtml += `
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="3" style="text-align:right; padding: 10px; font-weight:bold;">GRAND TOTAL:</td>
-                        <td style="text-align:right; padding: 10px; font-weight:bold; border-top: 2px solid #333;">$${grandTotal.toFixed(2)}</td>
-                    </tr>
-                </tfoot>
-            </table>`;
     } else {
-        partsHtml = "<p style='font-size:12px; color:#666;'>No parts were issued for this repair.</p>";
+        partsHtml += `<tr><td colspan="4" style="padding:8px; color:#888; text-align:center;">No parts used.</td></tr>`;
     }
-let partsHtml = "";
-    let partsSubtotal = 0;
-    const laborFee = job.labor_fee || 0; // Get the new labor fee
 
-    if (parts && parts.length > 0) {
-        partsHtml = `<table style="width:100%; border-collapse: collapse; margin-top: 15px; font-size: 12px;">
-            <thead>
-                <tr style="background: #f2f2f2; border-bottom: 2px solid #333;">
-                    <th style="text-align:left; padding: 8px;">Item / Service</th>
-                    <th style="text-align:center; padding: 8px;">Qty</th>
-                    <th style="text-align:right; padding: 8px;">Price</th>
-                    <th style="text-align:right; padding: 8px;">Total</th>
-                </tr>
-            </thead>
-            <tbody>`;
+    // Add Labor Fee Row
+    partsHtml += `
+        <tr style="background: #fafafa; font-style: italic; border-top: 2px solid #eee;">
+            <td colspan="3" style="padding: 8px; text-align:right;">Service & Labor Fee:</td>
+            <td style="text-align:right; padding: 8px;">$${laborFee.toFixed(2)}</td>
+        </tr>
+    </tbody>
+    <tfoot>
+        <tr>
+            <td colspan="3" style="text-align:right; padding: 10px; font-weight:bold; font-size:16px;">GRAND TOTAL:</td>
+            <td style="text-align:right; padding: 10px; font-weight:bold; font-size:16px; border-top: 2px solid #333;">
+                $${(partsSubtotal + laborFee).toFixed(2)}
+            </td>
+        </tr>
+    </tfoot>
+    </table>`;
 
-        parts.forEach(p => {
-            const price = p.inventory ? p.inventory.unit_price : 0;
-            const lineTotal = p.quantity * price;
-            partsSubtotal += lineTotal;
-
-            partsHtml += `<tr style="border-bottom: 1px solid #ddd;">
-                <td style="padding: 8px;">${p.part_name}</td>
-                <td style="text-align:center; padding: 8px;">${p.quantity}</td>
-                <td style="text-align:right; padding: 8px;">$${price.toFixed(2)}</td>
-                <td style="text-align:right; padding: 8px;">$${lineTotal.toFixed(2)}</td>
-            </tr>`;
-        });
-
-        // ADD THE LABOR ROW HERE
-        partsHtml += `
-            <tr style="background: #fafafa; font-style: italic;">
-                <td colspan="3" style="padding: 8px; text-align:right;">Service & Labor Fee:</td>
-                <td style="text-align:right; padding: 8px;">$${parseFloat(laborFee).toFixed(2)}</td>
-            </tr>
-        </tbody>
-        <tfoot>
-            <tr>
-                <td colspan="3" style="text-align:right; padding: 10px; font-weight:bold; font-size:16px;">GRAND TOTAL:</td>
-                <td style="text-align:right; padding: 10px; font-weight:bold; font-size:16px; border-top: 2px solid #333;">
-                    $${(partsSubtotal + parseFloat(laborFee)).toFixed(2)}
-                </td>
-            </tr>
-        </tfoot>
-        </table>`;
-    }
-    // 3. Create the Print Window
+    // 4. Create the Print Window
     const printWin = window.open('', '', 'width=800,height=900');
     printWin.document.write(`
         <html>
         <head>
-            <title>LSM Receipt - Job #${job.id}</title>
+            <title>Receipt - Job #${job.id}</title>
             <style>
                 body { font-family: sans-serif; padding: 40px; color: #333; }
                 .header { text-align: center; border-bottom: 2px solid #ff4500; padding-bottom: 10px; margin-bottom: 20px; }
@@ -249,7 +215,6 @@ let partsHtml = "";
                 <h1 style="margin:0; color:#ff4500;">LAO SMART MOBILITY</h1>
                 <p style="margin:5px 0; font-size:12px;">Repair Receipt / Job Card</p>
             </div>
-
             <div class="info-grid">
                 <div class="box">
                     <span class="label">Job ID</span><span class="value">#${job.id}</span><br><br>
@@ -257,32 +222,24 @@ let partsHtml = "";
                 </div>
                 <div class="box">
                     <span class="label">Date</span><span class="value">${new Date(job.arrival_time).toLocaleDateString()}</span><br><br>
-                    <span class="label">Mechanic</span><span class="value">${job.assigned_mechanic_id}</span>
+                    <span class="label">Mechanic</span><span class="value">${job.assigned_mechanic_id || 'N/A'}</span>
                 </div>
             </div>
-
             <div class="box" style="margin-bottom:20px;">
                 <span class="label">Symptoms & Work Performed</span>
-                <p class="value" style="font-size:12px;">${job.symptoms}</p>
+                <p class="value" style="font-size:12px;">${job.symptoms || 'No description provided.'}</p>
             </div>
-
-            <h3 style="border-bottom: 1px solid #333; padding-bottom: 5px;">PARTS LIST</h3>
+            <h3 style="border-bottom: 1px solid #333; padding-bottom: 5px;">BILLING DETAILS</h3>
             ${partsHtml}
-
             <div style="margin-top: 50px; display: flex; justify-content: space-between;">
                 <div style="text-align:center; width: 200px; border-top: 1px solid #333; padding-top: 5px; font-size: 12px;">Customer Signature</div>
                 <div style="text-align:center; width: 200px; border-top: 1px solid #333; padding-top: 5px; font-size: 12px;">Manager/Authorized</div>
             </div>
-
-            <p style="text-align:center; font-size: 10px; color: #999; margin-top: 40px;">Thank you for choosing LSM. Powered by somphone.dang@gmail.com.</p>
         </body>
         </html>
     `);
-
     printWin.document.close();
     printWin.focus();
-    // Optional: Auto-trigger print
-    // printWin.print();
 }
     
     function logout() {

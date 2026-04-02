@@ -15,7 +15,6 @@
         .column-repair{border-color:#f1c40f;}
         .column-pdi{border-color:#e67e22;}
         
-        /* Special Styling for History Column */
         .column-history{
             background: rgba(255,255,255,0.03); 
             border-top: 4px solid #95a5a6; 
@@ -29,9 +28,13 @@
         h3{font-size:14px; margin-top:0; text-transform:uppercase; letter-spacing:1px; margin-bottom:15px;}
 
         /* Slim cards */
-        .job-card{background:#2a2a2a; padding:12px; border-radius:8px; margin-bottom:10px; box-shadow:0 4px 6px rgba(0,0,0,0.4); border-left:4px solid #555; transition: 0.2s; text-align: left;}
+        .job-card{background:#2a2a2a; padding:12px; border-radius:8px; margin-bottom:10px; box-shadow:0 4px 6px rgba(0,0,0,0.4); border-left:4px solid #555; transition: 0.2s; text-align: left; cursor: default;}
         .job-card:hover{transform: scale(1.02); background:#333;}
         
+        /* Interactive PDI cards */
+        .clickable-card { cursor: pointer; border-left-color: #e67e22; }
+        .clickable-card:active { transform: scale(0.98); }
+
         .plate{font-size:16px; font-weight:bold; color:#fff; display:block; margin-bottom:4px;}
         .details{font-size:11px; color:#aaa; margin-bottom:8px; display:block;}
         .mech-name{font-size:11px; color:#f1c40f; font-weight:bold;}
@@ -41,6 +44,13 @@
         .btn-history{background: #27ae60; color: white; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; font-size: 13px; transition: 0.3s; width: 80%;}
         .btn-history:hover{background: #2ecc71; transform: translateY(-2px);}
         
+        /* Modal Styles */
+        #edit-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:1000; justify-content:center; align-items:center; }
+        .modal-content { background:#2a2a2a; padding:25px; border-radius:12px; width:300px; border: 1px solid #444; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .modal-input { width:100%; padding:12px; background:#1a1a1a; border:1px solid #444; color:white; border-radius:6px; margin: 15px 0; font-size: 16px; box-sizing: border-box;}
+        .btn-save { width:100%; padding:12px; background:#27ae60; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; margin-bottom:10px;}
+        .btn-cancel { width:100%; padding:10px; background:transparent; color:#888; border:none; cursor:pointer; font-size:12px;}
+
         #debug-log{font-size:10px; color: #555; margin-top:10px;}
     </style>
 </head><body>
@@ -67,6 +77,7 @@
 
         <div class="column column-pdi">
             <h3 style="color:#e67e22">PDI Inspection</h3>
+            <p style="font-size: 9px; color: #666; margin-bottom: 10px;">Click card to complete & add fee</p>
             <div id="col-PDI"></div>
         </div>
 
@@ -83,10 +94,53 @@
     <div id="debug-log">System Initializing...</div>
 </div>
 
+<div id="edit-modal">
+    <div class="modal-content">
+        <h3 style="color:#e67e22; margin-bottom:5px;">Finish Repair</h3>
+        <span id="modal-plate-display" style="font-size: 18px; font-weight: bold;"></span>
+        <div style="margin-top:20px;">
+            <label style="font-size: 10px; color: #888;">ENTER LABOR FEE ($)</label>
+            <input type="number" id="labor-fee-input" class="modal-input" value="0" step="0.01">
+        </div>
+        <button class="btn-save" onclick="saveJobCompletion()">✅ COMPLETE JOB</button>
+        <button class="btn-cancel" onclick="closeModal()">CANCEL</button>
+    </div>
+</div>
+
 <script>
     const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
     const _s = supabase.createClient(u, k);
+
+    let activeJobId = null;
+
+    function openModal(id, plate) {
+        activeJobId = id;
+        document.getElementById('modal-plate-display').innerText = plate;
+        document.getElementById('labor-fee-input').value = 0;
+        document.getElementById('edit-modal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('edit-modal').style.display = 'none';
+    }
+
+    async function saveJobCompletion() {
+        const fee = document.getElementById('labor-fee-input').value;
+        const { error } = await _s.from('job_cards')
+            .update({ 
+                current_status: 'COMPLETED',
+                labor_fee: parseFloat(fee)
+            })
+            .eq('id', activeJobId);
+
+        if(!error) {
+            closeModal();
+            loadLiveView();
+        } else {
+            alert("Error: " + error.message);
+        }
+    }
 
     async function loadLiveView() {
         const logBox = document.getElementById('debug-log');
@@ -94,7 +148,6 @@
         
         logBox.innerText = "Status: Refreshing Active Workshop Floor...";
 
-        // Filter: Hide FINISHED and READY/COMPLETED jobs from this view
         const { data: jobs, error } = await _s
             .from('job_cards')
             .select('*')
@@ -105,7 +158,6 @@
             return;
         }
 
-        // Clear existing cards
         document.getElementById('col-RECEPTION').innerHTML = "";
         document.getElementById('col-IN_REPAIR').innerHTML = "";
         document.getElementById('col-PDI').innerHTML = "";
@@ -122,21 +174,26 @@
         jobs.forEach(job => {
             const status = String(job.current_status || '').toUpperCase().trim();
             let targetId = null;
+            let isClickable = false;
 
-            // Logic to place cards in the correct active column
             if (status.includes('QUEUED') || status.includes('RECEPTION')) {
                 targetId = 'col-RECEPTION';
             } else if (status.includes('REPAIR') || status.includes('WORKING')) {
                 targetId = 'col-IN_REPAIR';
             } else if (status.includes('PDI')) {
                 targetId = 'col-PDI';
+                isClickable = true; // GM can click PDI cards to finish them
             }
 
-            // Only render the card if it belongs to an active workshop column
             if (targetId) {
                 const container = document.getElementById(targetId);
                 const card = document.createElement('div');
-                card.className = 'job-card';
+                card.className = `job-card ${isClickable ? 'clickable-card' : ''}`;
+                
+                if(isClickable) {
+                    card.onclick = () => openModal(job.id, job.vehicle_plate);
+                }
+
                 card.innerHTML = `
                     <span class="plate">${job.vehicle_plate}</span>
                     <span class="details">Core: ${job.core_type || '2'}</span>
@@ -149,6 +206,6 @@
     }
     
     loadLiveView();
-    setInterval(loadLiveView, 20000); // Auto-refresh every 20 seconds
+    setInterval(loadLiveView, 20000); 
 </script>
 </body></html>

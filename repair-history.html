@@ -123,7 +123,7 @@
         });
     }
 
-    async function printJobCard(jobId) {
+    async function printJob(jobId) {
     // 1. Fetch Job Details
     const { data: job } = await _s.from('job_cards').select('*').eq('id', jobId).single();
     

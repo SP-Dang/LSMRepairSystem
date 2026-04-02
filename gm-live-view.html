@@ -188,11 +188,7 @@
             if (targetId) {
                 const container = document.getElementById(targetId);
                 const card = document.createElement('div');
-                card.className = `job-card ${isClickable ? 'clickable-card' : ''}`;
-                
-                if(isClickable) {
-                    card.onclick = () => openModal(job.id, job.vehicle_plate);
-                }
+                card.className = 'job-card';
 
                 card.innerHTML = `
                     <span class="plate">${job.vehicle_plate}</span>

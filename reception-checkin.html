@@ -8,6 +8,11 @@
     .form-group{margin-bottom:12px} 
     label{display:block;margin-bottom:5px;font-weight:bold;font-size:13px;color:#444} 
     input,select,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;box-sizing:border-box;font-size:14px} 
+    
+    /* Highlight for Labor Fee */
+    .labor-group { background: #fff8f1; padding: 15px; border-radius: 10px; border: 1px dashed #ff4500; margin-top: 10px;}
+    .labor-input { font-size: 18px; font-weight: bold; color: #ff4500; border: 1px solid #ff4500; }
+
     .check-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#f9f9f9;padding:15px;border-radius:10px} 
     .check-item{display:flex;align-items:center;font-size:13px;cursor:pointer} 
     .check-item input{width:auto;margin-right:10px} 
@@ -17,28 +22,8 @@
     button#submit{width:100%;padding:18px;background:#1a1a1a;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:20px;transition:0.2s} 
     button#submit:hover{background:#333} 
     .success-msg{display:none;background:#d4edda;color:#155724;padding:15px;border-radius:8px;text-align:center;margin-top:15px;font-weight:bold}
-    .logout-btn {
-    font-size: 14px;      /* Was 12px */
-    color: #e74c3c;      /* Professional Red */
-    cursor: pointer;
-    text-decoration: none;
-    border: 1px solid #e74c3c; /* Adds a small border to make it look like a button */
-    background: none;
-    padding: 4px 10px;
-    border-radius: 5px;
-    font-weight: bold;
-    transition: 0.2s;
-}
-
-.logout-btn:hover {
-    background: #e74c3c;
-    color: #fff;
-}
-button[onclick*="manager-dashboard"]:hover {
-    background: #3498db !important;
-    color: #fff !important;
-}   
-    /* Style for the auto-fill notification */
+    .logout-btn { font-size: 14px; color: #e74c3c; cursor: pointer; text-decoration: none; border: 1px solid #e74c3c; background: none; padding: 4px 10px; border-radius: 5px; font-weight: bold; transition: 0.2s;}
+    .logout-btn:hover { background: #e74c3c; color: #fff; }
     #search-status { font-size: 10px; font-weight: bold; margin-top: 4px; display: block; }
 </style></head><body>
 
@@ -52,7 +37,6 @@ button[onclick*="manager-dashboard"]:hover {
                     style="font-size:14px; color:#3498db; cursor:pointer; text-decoration:none; border:1px solid #3498db; background:none; padding:4px 10px; border-radius:5px; font-weight:bold; transition:0.2s;">
                     🔧 Assign Mechanic
                 </button>
-                
                 <button class="logout-btn" onclick="logout()">Logout</button>
             </div>
         </div>
@@ -90,6 +74,13 @@ button[onclick*="manager-dashboard"]:hover {
         <div class="core-btn" id="core-3" onclick="setCore(3, this)">CORE 3: GMS</div>
     </div>
 
+    <div class="section-label">Billing Estimate</div>
+    <div class="labor-group">
+        <label style="color:#ff4500">Service & Labor Fee ($)</label>
+        <input type="number" id="labor_fee" class="labor-input" placeholder="0.00" value="0">
+        <p style="font-size:10px; color:#999; margin-top:5px;">This fee is for labor/service only. Parts will be billed separately.</p>
+    </div>
+
     <button id="submit" onclick="submitJob()">CREATE JOB CARD</button>
     <div id="msg" class="success-msg">✅ Job Card #<span id="jobNo"></span> Created!</div>
 </div>
@@ -99,7 +90,6 @@ button[onclick*="manager-dashboard"]:hover {
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
     const _s = supabase.createClient(u, k);
 
-    // SECURITY & USER DISPLAY
     const currentStaff = localStorage.getItem('lsm_user_name');
     if(!currentStaff) {
         window.location.href = 'index.html';
@@ -115,17 +105,14 @@ button[onclick*="manager-dashboard"]:hover {
         el.classList.add('active');
     }
 
-    // --- NEW AUTO-FILL LOGIC ---
     async function lookupVehicle() {
         const plate = document.getElementById('plate').value.trim().toUpperCase();
         const status = document.getElementById('search-status');
-        
         if (plate.length < 3) return;
 
         status.innerText = "🔍 Checking history...";
         status.style.color = "#888";
 
-        // Check 'vehicles' table for existing data
         const { data, error } = await _s.from('vehicles')
             .select('*')
             .eq('plate_no', plate)
@@ -136,11 +123,8 @@ button[onclick*="manager-dashboard"]:hover {
             document.getElementById('model').value = data.model_type || "";
             document.getElementById('owner').value = data.owner_name || "";
             document.getElementById('phone').value = data.owner_phone || "";
-            
             status.innerText = "✅ Data found & auto-filled.";
             status.style.color = "#27ae60";
-            
-            // Visual highlight
             document.querySelectorAll('.grid input').forEach(i => {
                 if(i.value) i.style.background = "#e8f5e9";
             });
@@ -156,6 +140,7 @@ button[onclick*="manager-dashboard"]:hover {
         const vin = document.getElementById('vin').value;
         const owner = document.getElementById('owner').value;
         const phone = document.getElementById('phone').value;
+        const labor = document.getElementById('labor_fee').value || 0; // GET LABOR FEE
         const btn = document.getElementById('submit');
         
         const symptoms = Array.from(document.querySelectorAll('.symptom:checked'))
@@ -166,7 +151,7 @@ button[onclick*="manager-dashboard"]:hover {
         btn.disabled = true;
         btn.innerText = "PROCESSING...";
 
-        // 1. Update Vehicle Master List (Upsert means Insert or Update if exists)
+        // 1. Update Vehicle Master List
         await _s.from('vehicles').upsert({ 
             plate_no: plate, 
             owner_name: owner, 
@@ -175,13 +160,14 @@ button[onclick*="manager-dashboard"]:hover {
             vin_no: vin 
         });
 
-        // 2. Create Job Card
+        // 2. Create Job Card with LABOR FEE
         const { data, error } = await _s.from('job_cards').insert([{
             vehicle_plate: plate,
             core_type: selectedCore,
             symptoms: symptoms || "General Checkup",
             current_status: 'QUEUED',
-            created_by: currentStaff
+            created_by: currentStaff,
+            labor_fee: parseFloat(labor) // ADDED THIS LINE
         }]).select();
 
         if (error) {

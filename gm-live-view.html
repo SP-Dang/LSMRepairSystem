@@ -4,72 +4,104 @@
     <meta charset="UTF-8"><title>LSM - ສະຖານະການສ້ອມແປງສົດ</title>
     <style>
         body{font-family:'Segoe UI','Phetsarath OT',sans-serif; background:#1a1a1a; color:#eee; margin:0; padding:20px;}
-        .container{max-width:1400px; margin:0 auto;}
+        .container{max-width:1600px; margin:0 auto;}
         .header{display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:2px solid #333; padding-bottom:15px; flex-wrap:wrap;}
-        .board{display:flex; gap:20px; overflow-x:auto; padding-bottom:20px;}
-        .column{background:#252525; min-width:300px; border-radius:10px; padding:15px; border-top:4px solid #444;}
-        .column-reception{border-color:#3498db;}
+        .stats-bar{display:flex; gap:15px; margin-bottom:20px; flex-wrap:wrap;}
+        .stat-pill{background:#333; padding:6px 12px; border-radius:20px; font-size:12px;}
+        .stat-pill span{color:#f1c40f; font-weight:bold;}
+        
+        .board{display:flex; gap:15px; overflow-x:auto; padding-bottom:10px;}
+        
+        .column{background:#252525; min-width:280px; border-radius:8px; padding:12px; border-top:3px solid #444;}
+        .column h3{font-size:14px; margin:0 0 12px 0; padding-bottom:8px; border-bottom:1px solid #3a3a3a; display:flex; justify-content:space-between; align-items:center;}
+        .count-badge{background:#444; padding:2px 8px; border-radius:15px; font-size:11px;}
+        
+        .column-queued{border-color:#3498db;}
         .column-repair{border-color:#f1c40f;}
         .column-pdi{border-color:#e67e22;}
-        .column-ready{border-color:#27ae60;}
-        .job-card{background:#333; padding:15px; border-radius:8px; margin-bottom:15px; box-shadow:0 4px 6px rgba(0,0,0,0.3); border-left:4px solid #555; transition:transform 0.2s;}
-        .job-card:hover{transform:translateX(5px);}
-        .plate{font-size:18px; font-weight:bold; color:#fff; display:block;}
-        .mech-name{font-size:12px; color:#f1c40f; margin-top:5px; display:block;}
-        .symptoms{font-size:11px; color:#888; margin-top:8px; font-style:italic;}
-        .time-stamp{font-size:10px; color:#555; margin-top:5px;}
-        .btn-back{text-decoration:none; color:#f1c40f; font-weight:bold; border:1px solid #f1c40f; padding:5px 15px; border-radius:5px;}
-        .refresh-btn{background:#27ae60; color:white; border:none; padding:5px 15px; border-radius:5px; cursor:pointer; margin-left:10px;}
-        .stats-bar{display:flex; gap:15px; margin-bottom:20px; flex-wrap:wrap;}
-        .stat-pill{background:#333; padding:8px 16px; border-radius:20px; font-size:13px;}
-        .stat-pill span{color:#f1c40f; font-weight:bold;}
-        @media (max-width:768px){
-            .board{flex-direction:column;}
-            .column{min-width:auto;}
+        .column-completed{border-color:#27ae60;}
+        
+        .job-card{background:#2d2d2d; padding:10px; border-radius:6px; margin-bottom:8px; border-left:3px solid #555; font-size:12px; transition:all 0.2s;}
+        .job-card:hover{background:#383838; transform:translateX(3px);}
+        .plate{font-size:14px; font-weight:bold; color:#fff; display:block;}
+        .core-tag{font-size:9px; padding:2px 5px; border-radius:3px; display:inline-block; margin-top:4px;}
+        .mech-name{font-size:10px; color:#aaa; margin-top:4px; display:block;}
+        .symptoms{font-size:10px; color:#777; margin-top:5px; font-style:italic; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+        .time-stamp{font-size:9px; color:#555; margin-top:4px;}
+        
+        .btn-back{text-decoration:none; color:#f1c40f; font-weight:bold; border:1px solid #f1c40f; padding:5px 15px; border-radius:5px; font-size:13px;}
+        .refresh-btn{background:#27ae60; color:white; border:none; padding:5px 15px; border-radius:5px; cursor:pointer; margin-left:10px; font-size:13px;}
+        
+        .empty-msg{text-align:center; padding:30px; color:#555; font-size:12px;}
+        
+        @media (max-width:1000px){
+            .board{flex-wrap:wrap;}
+            .column{flex:1; min-width:240px;}
         }
+        
+        .debug-info{background:#1a1a1a; padding:10px; margin-top:20px; border-radius:5px; font-size:11px; color:#888; display:none;}
     </style>
 </head><body>
 
 <div class="container">
     <div class="header">
         <div>
-            <h1>📊 ສະຖານະການສ້ອມແປງສົດ</h1>
-            <small style="color:#888">ອັບເດດອັດຕະໂນມັດທຸກ 30 ວິນາທີ</small>
+            <h1 style="font-size:22px; margin:0;">📊 ສະຖານະການສ້ອມແປງສົດ</h1>
+            <small style="color:#888; font-size:11px;">ອັບເດດອັດຕະໂນມັດທຸກ 30 ວິນາທີ</small>
         </div>
         <div>
-            <button class="refresh-btn" onclick="loadLiveView()">🔄 ຣີເຟຣດຕອນນີ້</button>
-            <a href="gm-menu.html" class="btn-back">⬅️ ກັບຄືນແຜງຄວບຄຸມ</a>
+            <button class="refresh-btn" onclick="loadLiveView()">🔄 ຣີເຟຣດ</button>
+            <a href="gm-menu.html" class="btn-back">⬅️ ກັບຄືນ</a>
         </div>
     </div>
 
     <div class="stats-bar">
-        <div class="stat-pill">🚗 ລໍຖ້າ: <span id="count-reception">0</span></div>
-        <div class="stat-pill">🔧 ກຳລັງສ້ອມແປງ: <span id="count-repair">0</span></div>
-        <div class="stat-pill">✅ ກຳລັງກວດສອບ PDI: <span id="count-pdi">0</span></div>
-        <div class="stat-pill">🏁 ສຳເລັດຮັບລົດ: <span id="count-completed">0</span></div>
+        <div class="stat-pill">📋 ລໍຖ້າ: <span id="count-queued">0</span></div>
+        <div class="stat-pill">🔧 ກຳລັງສ້ອມ: <span id="count-repair">0</span></div>
+        <div class="stat-pill">✅ ກຳລັງກວດ PDI: <span id="count-pdi">0</span></div>
+        <div class="stat-pill">🏁 ສຳເລັດສົ່ງລົດ: <span id="count-completed">0</span></div>
     </div>
 
     <div class="board">
-        <div class="column column-reception">
-            <h3 style="color:#3498db">📋 ລໍຖ້າມອບໝາຍ (QUEUED)</h3>
-            <div id="col-QUEUED"></div>
+        <!-- ລໍຖ້າ / QUEUED -->
+        <div class="column column-queued">
+            <h3>
+                <span>📋 ລໍຖ້າ</span>
+                <span class="count-badge" id="badge-queued">0</span>
+            </h3>
+            <div id="col-QUEUED" class="jobs-container"></div>
         </div>
 
+        <!-- ກຳລັງສ້ອມແປງ / IN_REPAIR -->
         <div class="column column-repair">
-            <h3 style="color:#f1c40f">🔧 ກຳລັງສ້ອມແປງ (IN REPAIR)</h3>
-            <div id="col-IN_REPAIR"></div>
+            <h3>
+                <span>🔧 ກຳລັງສ້ອມແປງ</span>
+                <span class="count-badge" id="badge-repair">0</span>
+            </h3>
+            <div id="col-IN_REPAIR" class="jobs-container"></div>
         </div>
 
+        <!-- PDI ກວດ / PDI -->
         <div class="column column-pdi">
-            <h3 style="color:#e67e22">🔍 ກວດສອບ PDI (PDI)</h3>
-            <div id="col-PDI"></div>
+            <h3>
+                <span>✅ PDI ກວດ</span>
+                <span class="count-badge" id="badge-pdi">0</span>
+            </h3>
+            <div id="col-PDI" class="jobs-container"></div>
         </div>
 
-        <div class="column column-ready">
-            <h3 style="color:#27ae60">🏁 ສຳເລັດຮັບລົດ (COMPLETED)</h3>
-            <div id="col-COMPLETED"></div>
+        <!-- ສຳເລັດ ສົ່ງລົດ / COMPLETED + FINISHED -->
+        <div class="column column-completed">
+            <h3>
+                <span>🏁 ສຳເລັດ ສົ່ງລົດ</span>
+                <span class="count-badge" id="badge-completed">0</span>
+            </h3>
+            <div id="col-COMPLETED" class="jobs-container"></div>
         </div>
     </div>
+    
+    <!-- Debug section (hidden by default, can show for troubleshooting) -->
+    <div id="debug-info" class="debug-info"></div>
 </div>
 
 <script>
@@ -78,27 +110,55 @@
     const _s = supabase.createClient(u, k);
 
     async function loadLiveView() {
+        console.log("Loading live view...");
+        
+        // Fetch ALL jobs (no filter)
         const { data: jobs, error } = await _s.from('job_cards')
             .select('*')
             .order('created_at', { ascending: false });
         
         if(error) {
             console.error("Error loading jobs:", error);
+            document.getElementById('col-QUEUED').innerHTML = `<div class="empty-msg">❌ ຜິດພາດ: ${error.message}</div>`;
             return;
         }
         
-        // Clear all columns
-        document.getElementById('col-QUEUED').innerHTML = "";
-        document.getElementById('col-IN_REPAIR').innerHTML = "";
-        document.getElementById('col-PDI').innerHTML = "";
-        document.getElementById('col-COMPLETED').innerHTML = "";
-
+        console.log("Jobs fetched:", jobs);
+        
+        // For debugging - show what statuses exist in database
+        if(jobs && jobs.length > 0) {
+            const uniqueStatuses = [...new Set(jobs.map(j => j.current_status))];
+            console.log("Unique statuses in DB:", uniqueStatuses);
+            document.getElementById('debug-info').innerHTML = `📊 DB Statuses: ${uniqueStatuses.join(', ')} | Total Jobs: ${jobs.length}`;
+            document.getElementById('debug-info').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('debug-info').style.display = 'none';
+            }, 5000);
+        }
+        
+        // Clear containers
+        const containers = {
+            'QUEUED': document.getElementById('col-QUEUED'),
+            'IN_REPAIR': document.getElementById('col-IN_REPAIR'),
+            'PDI': document.getElementById('col-PDI'),
+            'COMPLETED': document.getElementById('col-COMPLETED')
+        };
+        
+        // Clear each container
+        Object.keys(containers).forEach(key => {
+            if(containers[key]) containers[key].innerHTML = "";
+        });
+        
         if(!jobs || jobs.length === 0) {
-            const emptyMsg = "<div style='text-align:center;padding:40px;color:#555'>ບໍ່ມີຂໍ້ມູນວຽກ</div>";
-            document.getElementById('col-QUEUED').innerHTML = emptyMsg;
-            document.getElementById('col-IN_REPAIR').innerHTML = emptyMsg;
-            document.getElementById('col-PDI').innerHTML = emptyMsg;
-            document.getElementById('col-COMPLETED').innerHTML = emptyMsg;
+            const emptyMsg = "<div class='empty-msg'>ບໍ່ມີຂໍ້ມູນວຽກ</div>";
+            Object.values(containers).forEach(c => {
+                if(c) c.innerHTML = emptyMsg;
+            });
+            // Reset counts
+            ['queued', 'repair', 'pdi', 'completed'].forEach(id => {
+                document.getElementById(`count-${id}`).innerText = '0';
+                document.getElementById(`badge-${id}`).innerText = '0';
+            });
             return;
         }
 
@@ -106,35 +166,83 @@
 
         jobs.forEach(job => {
             let status = job.current_status;
-            if(status === 'FINISHED') status = 'COMPLETED';
             
-            const container = document.getElementById('col-' + status);
+            // Map FINISHED to COMPLETED for display in the last column
+            let displayStatus = status;
+            if(status === 'FINISHED') {
+                displayStatus = 'COMPLETED';
+            }
+            
+            const container = containers[displayStatus];
             if(container) {
-                counts[status] = (counts[status] || 0) + 1;
+                counts[displayStatus] = (counts[displayStatus] || 0) + 1;
                 
                 const card = document.createElement('div');
                 card.className = 'job-card';
-                const dateStr = job.arrival_time ? new Date(job.arrival_time).toLocaleString('lo-LA') : '';
+                
+                // Core type styling
                 const coreColor = job.core_type == 1 ? '#3498db' : (job.core_type == 2 ? '#f1c40f' : '#e74c3c');
+                const coreText = job.core_type == 1 ? 'ແກນ 1' : (job.core_type == 2 ? 'ແກນ 2' : 'ແກນ 3');
+                const coreTextColor = job.core_type == 2 ? '#000' : '#fff';
+                
+                // Shorten symptoms if too long
+                let symptoms = job.symptoms || 'ບໍ່ມີ';
+                if(symptoms.length > 40) symptoms = symptoms.substring(0, 37) + '...';
+                
+                // Format time
+                let timeStr = '-';
+                if(job.arrival_time) {
+                    try {
+                        timeStr = new Date(job.arrival_time).toLocaleTimeString('lo-LA', {hour:'2-digit', minute:'2-digit'});
+                    } catch(e) {
+                        timeStr = job.arrival_time.substring(11, 16);
+                    }
+                }
                 
                 card.innerHTML = `
                     <span class="plate">🚕 ${job.vehicle_plate}</span>
-                    <small style="color:${coreColor}; display:inline-block; margin-top:5px;">ແກນ CORE ${job.core_type}</small>
-                    <span class="mech-name">👤 ຊ່າງ: ${job.assigned_mechanic_id || 'ຍັງບໍ່ໄດ້ມອບໝາຍ'}</span>
-                    <div class="symptoms">📝 ອາການ: ${job.symptoms || 'ບໍ່ມີ'}</div>
-                    <div class="time-stamp">🕐 ເວລາມາ: ${dateStr}</div>
+                    <span class="core-tag" style="background:${coreColor}; color:${coreTextColor}">${coreText}</span>
+                    <span class="mech-name">👤 ${job.assigned_mechanic_id || 'ຍັງບໍ່ໄດ້ມອບ'}</span>
+                    <div class="symptoms">📝 ${symptoms}</div>
+                    <div class="time-stamp">🕐 ${timeStr}</div>
                 `;
                 container.appendChild(card);
+            } else {
+                console.log(`No container for status: ${status} (mapped to ${displayStatus})`);
             }
         });
         
-        document.getElementById('count-reception').innerText = counts.QUEUED || 0;
+        // Update counts
+        document.getElementById('count-queued').innerText = counts.QUEUED || 0;
         document.getElementById('count-repair').innerText = counts.IN_REPAIR || 0;
         document.getElementById('count-pdi').innerText = counts.PDI || 0;
         document.getElementById('count-completed').innerText = counts.COMPLETED || 0;
+        
+        document.getElementById('badge-queued').innerText = counts.QUEUED || 0;
+        document.getElementById('badge-repair').innerText = counts.IN_REPAIR || 0;
+        document.getElementById('badge-pdi').innerText = counts.PDI || 0;
+        document.getElementById('badge-completed').innerText = counts.COMPLETED || 0;
+        
+        // Show empty messages for columns with no jobs
+        if(counts.QUEUED === 0 && containers['QUEUED']) {
+            containers['QUEUED'].innerHTML = "<div class='empty-msg'>📭 ບໍ່ມີລົດລໍຖ້າ</div>";
+        }
+        if(counts.IN_REPAIR === 0 && containers['IN_REPAIR']) {
+            containers['IN_REPAIR'].innerHTML = "<div class='empty-msg'>🔧 ບໍ່ມີລົດກຳລັງສ້ອມ</div>";
+        }
+        if(counts.PDI === 0 && containers['PDI']) {
+            containers['PDI'].innerHTML = "<div class='empty-msg'>✅ ບໍ່ມີລົດລໍຖ້າກວດ PDI</div>";
+        }
+        if(counts.COMPLETED === 0 && containers['COMPLETED']) {
+            containers['COMPLETED'].innerHTML = "<div class='empty-msg'>🏁 ບໍ່ມີລົດທີ່ສຳເລັດ</div>";
+        }
+        
+        console.log("Counts:", counts);
     }
 
+    // Initial load
     loadLiveView();
-    setInterval(loadLiveView, 30000);
+    // Auto-refresh every 10 seconds for real-time updates
+    setInterval(loadLiveView, 10000);
 </script>
 </body></html>

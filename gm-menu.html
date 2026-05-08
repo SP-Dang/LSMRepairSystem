@@ -71,8 +71,9 @@
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
     const _s = supabase.createClient(u, k);
 
-    if(localStorage.getItem('lsm_role') !== 'GM') window.location.href = 'index.html';
-    document.getElementById('gm-name-display').innerText = localStorage.getItem('lsm_user_name');
+    // Fix: Use the correct key name 'lsm_user_role' instead of 'lsm_role'
+if(localStorage.getItem('lsm_user_role') !== 'GM') window.location.href = 'index.html';
+document.getElementById('gm-name-display').innerText = localStorage.getItem('lsm_user_name');
 
     async function loadLiveStats() {
         const { data: inv } = await _s.from('inventory').select('stock_quantity, unit_price');

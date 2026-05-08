@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en"><head>
+<html lang="lo"><head>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <meta charset="UTF-8"><title>LSM - GM COMMAND CENTER</title>
+    <meta charset="UTF-8"><title>LSM - ແຜງຄວບຄຸມ GM</title>
     <style>
-        body{font-family:'Segoe UI',sans-serif; background:#f0f2f5; margin:0; padding:20px;}
+        body{font-family:'Segoe UI','Phetsarath OT',sans-serif; background:#f0f2f5; margin:0; padding:20px;}
         .gm-header{background:#1a2a3a; color:white; padding:30px; border-radius:15px; margin-bottom:25px; text-align:center; position:relative;}
         .menu-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:20px;}
         .menu-card{background:white; padding:25px; border-radius:15px; text-decoration:none; color:#333; 
@@ -12,48 +12,57 @@
         .card-icon{font-size:35px; margin-bottom:10px; display:block;}
         .card-title{font-size:18px; font-weight:bold; color:#2c3e50;}
         .card-desc{font-size:13px; color:#7f8c8d; margin-top:5px;}
-        
-        /* Live Stat Badges */
         .stat-badge { position:absolute; top:15px; right:15px; background:#e74c3c; color:white; 
                       padding:4px 10px; border-radius:20px; font-size:11px; font-weight:bold; display:none; }
         .badge-green { background:#27ae60; }
-        
         .logout-btn { position:absolute; top:10px; right:10px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.3); color:white; padding:5px 12px; border-radius:5px; cursor:pointer; font-size:12px; }
     </style>
 </head><body>
 
 <div class="gm-header">
-    <button class="logout-btn" onclick="logout()">SECURE LOGOUT</button>
-    <h1 style="margin:0">LAO SMART MOBILITY DASHBOARD</h1>
-    <p style="opacity:0.8">General Manager: <span id="gm-name-display">...</span></p>
+    <button class="logout-btn" onclick="logout()">ອອກຈາກລະບົບ</button>
+    <h1 style="margin:0">ແຜງຄວບຄຸມ LSM</h1>
+    <p style="opacity:0.8">ຜູ້ຈັດການໃຫຍ່: <span id="gm-name-display">...</span></p>
 </div>
 
 <div class="menu-grid">
     <a href="inventory-manager.html" class="menu-card" style="border-color:#27ae60">
-        <span id="low-stock-alert" class="stat-badge">0 LOW</span>
+        <span id="low-stock-alert" class="stat-badge">0 ເຫຼືອໜ້ອຍ</span>
         <span class="card-icon">📦</span>
-        <span class="card-title">Inventory Manager</span>
-        <p class="card-desc">Current Value: <b id="total-inv-value">$0</b></p>
+        <span class="card-title">ຈັດການສິນຄ້າຄັງ</span>
+        <p class="card-desc">ມູນຄ່າລວມ: <b id="total-inv-value">$0</b></p>
     </a>
 
     <a href="gm-live-view.html" class="menu-card" style="border-color:#f1c40f">
-    <span id="active-jobs-alert" class="stat-badge badge-green">0 ACTIVE</span>
-    <span class="card-icon">🚕</span>
-    <span class="card-title">Live Workshop View</span>
-    <p class="card-desc">Real-time tracking of all Tuk Tuks from Check-in to PDI.</p>
-</a>
+        <span id="active-jobs-alert" class="stat-badge badge-green">0 ກຳລັງດຳເນີນ</span>
+        <span class="card-icon">🚕</span>
+        <span class="card-title">ສະຖານະການສ້ອມແປງສົດ</span>
+        <p class="card-desc">ເບິ່ງສະຖານະລົດທຸກຄັນໃນອູ່ຊ່ອມ</p>
+    </a>
 
     <a href="staff-management.html" class="menu-card" style="border-color:#2980b9">
         <span class="card-icon">👥</span>
-        <span class="card-title">Staff Management</span>
-        <p class="card-desc">Control access for your 6 mechanics and 4 PDI staff.</p>
+        <span class="card-title">ຈັດການພະນັກງານ</span>
+        <p class="card-desc">ຄຸ້ມຄອງສິດເຂົ້າໃຊ້ຂອງຊ່າງ 6 ຄົນ ແລະ ທີມ PDI 4 ຄົນ</p>
     </a>
 
     <a href="warehouse-parts.html" class="menu-card" style="border-color:#e67e22">
-        <span id="pending-parts-alert" class="stat-badge">0 REQ</span>
+        <span id="pending-parts-alert" class="stat-badge">0 ຄຳຂໍ</span>
         <span class="card-icon">🔩</span>
-        <span class="card-title">Warehouse Monitor</span>
-        <p class="card-desc">Check if parts are being issued quickly to mechanics.</p>
+        <span class="card-title">ຕິດຕາມຄັງເກັບສິນຄ້າ</span>
+        <p class="card-desc">ກວດສອບການເບີກຈ່າຍອາໄຫຼ່ໃຫ້ຊ່າງ</p>
+    </a>
+
+    <a href="profit-loss.html" class="menu-card" style="border-color:#e74c3c">
+        <span class="card-icon">📊</span>
+        <span class="card-title">ລາຍງານກຳໄລ-ຂາດທຶນ</span>
+        <p class="card-desc">ວິເຄາະລາຍຮັບ ຄ່າໃຊ້ຈ່າຍ ແລະ ກຳໄລສຸດທິ</p>
+    </a>
+
+    <a href="revenue-report.html" class="menu-card" style="border-color:#3498db">
+        <span class="card-icon">💰</span>
+        <span class="card-title">ລາຍງານລາຍຮັບ</span>
+        <p class="card-desc">ລາຍງານລາຍຮັບຈາກຄ່າແຮງງານ ແລະ ອາໄຫຼ່</p>
     </a>
 </div>
 
@@ -62,39 +71,35 @@
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
     const _s = supabase.createClient(u, k);
 
-    // 1. Security & Identity
     if(localStorage.getItem('lsm_role') !== 'GM') window.location.href = 'index.html';
     document.getElementById('gm-name-display').innerText = localStorage.getItem('lsm_user_name');
 
     async function loadLiveStats() {
-        // A. Check Low Stock (Threshold < 5)
         const { data: inv } = await _s.from('inventory').select('stock_quantity, unit_price');
         if(inv) {
             const lowItems = inv.filter(i => i.stock_quantity < 5).length;
             const totalVal = inv.reduce((acc, curr) => acc + (curr.stock_quantity * curr.unit_price), 0);
             
             if(lowItems > 0) {
-                document.getElementById('low-stock-alert').innerText = lowItems + " LOW";
+                document.getElementById('low-stock-alert').innerText = lowItems + " ເຫຼືອໜ້ອຍ";
                 document.getElementById('low-stock-alert').style.display = 'block';
             }
             document.getElementById('total-inv-value').innerText = "$" + totalVal.toLocaleString();
         }
 
-        // B. Check Active Jobs
         const { count: jobCount } = await _s.from('job_cards')
             .select('*', { count: 'exact', head: true }).eq('current_status', 'IN_REPAIR');
         
         if(jobCount > 0) {
-            document.getElementById('active-jobs-alert').innerText = jobCount + " ACTIVE";
+            document.getElementById('active-jobs-alert').innerText = jobCount + " ກຳລັງດຳເນີນ";
             document.getElementById('active-jobs-alert').style.display = 'block';
         }
 
-        // C. Check Pending Part Requests
         const { count: reqCount } = await _s.from('part_requests')
             .select('*', { count: 'exact', head: true }).eq('status', 'PENDING');
 
         if(reqCount > 0) {
-            document.getElementById('pending-parts-alert').innerText = reqCount + " NEW REQ";
+            document.getElementById('pending-parts-alert').innerText = reqCount + " ຄຳຂໍໃໝ່";
             document.getElementById('pending-parts-alert').style.display = 'block';
         }
     }
@@ -102,6 +107,6 @@
     function logout() { localStorage.clear(); window.location.href = 'index.html'; }
 
     loadLiveStats();
-    setInterval(loadLiveStats, 30000); // Refresh stats every 30 seconds
+    setInterval(loadLiveStats, 30000);
 </script>
 </body></html>

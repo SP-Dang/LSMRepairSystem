@@ -1,33 +1,53 @@
 <!DOCTYPE html>
-<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>LSM MANAGER - CONTROL PANEL</title><style>
-    body{font-family:'Segoe UI',sans-serif;background:#1a1a1a;color:#eee;margin:0;padding:20px}
-    .container{max-width:900px;margin:0 auto}
-    .header{background:#222;padding:20px;border-radius:12px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #3498db}
-    .job-card{background:#282828;border-radius:10px;padding:20px;margin-bottom:15px;display:flex;justify-content:space-between;align-items:center;border-left:5px solid #3498db}
-    .info b{color:#fff;font-size:18px}
-    .symptoms{font-size:13px;color:#aaa;margin-top:8px;background:#111;padding:8px;border-radius:5px}
-    .controls{display:flex;gap:10px}
-    select, button{padding:10px;border-radius:6px;border:none;cursor:pointer;font-weight:bold}
-    .assign-btn{background:#27ae60;color:white}
-    .logout-btn{background:#e74c3c;color:white;font-size:12px;padding:8px 15px}
-    .core-tag{padding:3px 8px;border-radius:4px;font-size:10px;text-transform:uppercase;margin-bottom:5px;display:inline-block}
-    .c1{background:#3498db} .c2{background:#f1c40f;color:#000} .c3{background:#e74c3c}
-</style></head><body>
+<html lang="lo"><head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSM - ແຜງຄວບຄຸມຜູ້ຈັດການ</title>
+    <style>
+        body{font-family:'Segoe UI','Phetsarath OT',sans-serif;background:#1a1a1a;color:#eee;margin:0;padding:20px}
+        .container{max-width:900px;margin:0 auto}
+        .header{background:#222;padding:20px;border-radius:12px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #3498db;flex-wrap:wrap;}
+        .job-card{background:#282828;border-radius:10px;padding:20px;margin-bottom:15px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px;border-left:5px solid #3498db}
+        .info b{color:#fff;font-size:18px}
+        .symptoms{font-size:13px;color:#aaa;margin-top:8px;background:#111;padding:8px;border-radius:5px}
+        .controls{display:flex;gap:10px;flex-wrap:wrap}
+        select, button{padding:10px;border-radius:6px;border:none;cursor:pointer;font-weight:bold}
+        .assign-btn{background:#27ae60;color:white}
+        .logout-btn{background:#e74c3c;color:white;font-size:12px;padding:8px 15px}
+        .core-tag{padding:3px 8px;border-radius:4px;font-size:10px;text-transform:uppercase;margin-bottom:5px;display:inline-block}
+        .c1{background:#3498db} .c2{background:#f1c40f;color:#000} .c3{background:#e74c3c}
+        .empty-state{text-align:center;padding:50px;color:#555}
+        .nav-buttons{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+        .nav-btn{background:#333;color:white;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:14px}
+        @media (max-width:600px){
+            .job-card{flex-direction:column;align-items:flex-start}
+            .controls{width:100%}
+            select,.assign-btn{width:100%}
+        }
+    </style>
+</head><body>
 
 <div class="container">
     <div class="header">
         <div>
-            <span style="font-size:11px;color:#888;display:block">LOGGED IN AS</span>
+            <span style="font-size:11px;color:#888;display:block">ເຂົ້າສູ່ລະບົບເປັນ</span>
             <b id="manager-name" style="color:#3498db;font-size:20px">...</b>
         </div>
         <div style="display:flex; gap:10px; align-items:center">
-            <button onclick="getMechanicList()" style="background:#444;color:white">🔄 REFRESH</button>
-            <button class="logout-btn" onclick="logout()">LOGOUT</button>
+            <button onclick="getMechanicList()" style="background:#444;color:white">🔄 ຣີເຟຣດ</button>
+            <button class="logout-btn" onclick="logout()">ອອກຈາກລະບົບ</button>
         </div>
     </div>
 
-    <h2 style="font-size:16px;color:#888">INCOMING VEHICLES (QUEUED)</h2>
-    <div id="incoming-list">Checking the garage floor...</div>
+    <h2 style="font-size:16px;color:#888">🚗 ລົດທີ່ລໍຖ້າມອບໝາຍ (QUEUED)</h2>
+    <div id="incoming-list">ກຳລັງໂຫຼດຂໍ້ມູນ...</div>
+    
+    <div class="nav-buttons">
+        <a href="repair-history.html" class="nav-btn">📜 ປະຫວັດການສ້ອມແປງ</a>
+        <a href="report-dashboard.html" class="nav-btn">📊 ລາຍງານສະມັດຕະພາບ</a>
+        <a href="revenue-report.html" class="nav-btn">💰 ລາຍງານລາຍຮັບ</a>
+    </div>
 </div>
 
 <script>
@@ -38,30 +58,23 @@
     let activeMechanics = []; 
     const currentManager = localStorage.getItem('lsm_user_name');
 
-    // 1. Security Check
     if(!currentManager) {
         window.location.href = 'index.html';
     } else {
         document.getElementById('manager-name').innerText = currentManager;
     }
 
-    // 2. Fetch mechanics and then load the queue
     async function getMechanicList() {
-        console.log("Fetching mechanics...");
         const { data, error } = await _s.from('staff')
             .select('name')
             .eq('role', 'MECHANIC')
             .order('name');
         
         if(error || !data || data.length === 0) {
-            console.error("Staff Table Empty or Error:", error);
-            // Backup list so the manager isn't stuck
             activeMechanics = ["Somchai", "Keo", "Noi", "Boun", "Phet", "Somsak"];
         } else {
             activeMechanics = data.map(m => m.name);
         }
-        
-        // Immediately load the queue once names are ready
         loadQueue(); 
     }
 
@@ -73,12 +86,12 @@
             .order('id', { ascending: true });
 
         if (error) {
-            list.innerHTML = "Error loading data.";
+            list.innerHTML = "<div class='empty-state'>ຜິດພາດໃນການໂຫຼດຂໍ້ມູນ</div>";
             return;
         }
 
         if(!data || data.length === 0) {
-            list.innerHTML = "<div style='text-align:center;padding:50px;color:#555'>No vehicles waiting.</div>";
+            list.innerHTML = "<div class='empty-state'>ບໍ່ມີລົດທີ່ລໍຖ້າມອບໝາຍ 🎉</div>";
             return;
         }
 
@@ -88,16 +101,16 @@
             div.className = 'job-card';
             div.innerHTML = `
                 <div class="info">
-                    <span class="core-tag c${job.core_type}">CORE ${job.core_type}</span><br>
-                    <b>${job.vehicle_plate}</b>
-                    <div class="symptoms">Issue: ${job.symptoms}</div>
+                    <span class="core-tag c${job.core_type}">ແກນ CORE ${job.core_type}</span><br>
+                    <b>🚕 ${job.vehicle_plate}</b>
+                    <div class="symptoms">📝 ອາການ: ${job.symptoms || 'ບໍ່ມີ'}</div>
                 </div>
                 <div class="controls">
                     <select id="mech-${job.id}" style="background:#444;color:white">
-                        <option value="">Assign To...</option>
+                        <option value="">ເລືອກຊ່າງ...</option>
                         ${activeMechanics.map(m => `<option value="${m}">${m}</option>`).join('')}
                     </select>
-                    <button class="assign-btn" onclick="assignJob(${job.id})">ASSIGN</button>
+                    <button class="assign-btn" onclick="assignJob(${job.id})">✅ ມອບໝາຍວຽກ</button>
                 </div>
             `;
             list.appendChild(div);
@@ -106,15 +119,28 @@
 
     async function assignJob(jobId) {
         const mechName = document.getElementById(`mech-${jobId}`).value;
-        if(!mechName) return alert("Select a mechanic first!");
+        if(!mechName) return alert("ກະລຸນາເລືອກຊ່າງກ່ອນ!");
+        
+        // Check if mechanic already has too many jobs (max 3)
+        const { count } = await _s.from('job_cards')
+            .select('*', { count: 'exact', head: true })
+            .eq('assigned_mechanic_id', mechName)
+            .eq('current_status', 'IN_REPAIR');
+        
+        if(count >= 3) {
+            alert(`⚠️ ຊ່າງ ${mechName} ກຳລັງສ້ອມແປງ ${count} ຄັນແລ້ວ, ກະລຸນາເລືອກຊ່າງອື່ນ`);
+            return;
+        }
 
         const { error } = await _s.from('job_cards')
             .update({ assigned_mechanic_id: mechName, current_status: 'IN_REPAIR' })
             .eq('id', jobId);
 
         if(!error) {
-            alert("Assigned to " + mechName);
+            alert(`✅ ມອບໝາຍໃຫ້ ${mechName} ສຳເລັດ!`);
             loadQueue();
+        } else {
+            alert("ຜິດພາດ: " + error.message);
         }
     }
 
@@ -123,7 +149,6 @@
         window.location.href = 'index.html';
     }
 
-    // Start everything
     window.onload = getMechanicList;
     setInterval(loadQueue, 20000); 
 </script>

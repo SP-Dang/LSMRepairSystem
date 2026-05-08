@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="lo"><head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta charset="UTF-8">
+    <title>LSM - ລາຍງານກຳໄລ-ຂາດທຶນ</title>
+    <style>
+        body{font-family:'Segoe UI','Phetsarath OT',sans-serif; background:#f4f7f6; margin:0; padding:20px;}
+        .container{max-width:1200px; margin:0 auto;}
+        .header{display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap;}
+        .filter-bar{background:white; padding:20px; border-radius:12px; margin-bottom:20px; display:flex; gap:15px; flex-wrap:wrap; align-items:flex-end;}
+        .filter-group{display:flex; flex-direction:column; gap:5px;}
+        label{font-size:11px; font-weight:bold; color:#666;}
+        input, select{padding:10px; border:1px solid #ddd; border-radius:8px;}
+        .btn-run{padding:10px 25px; background:#27ae60; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;}
+        
+        .summary-grid{display:grid; grid-template-columns:repeat(4, 1fr); gap:20px; margin-bottom:25px;}
+        .summary-card{background:white; padding:20px; border-radius:12px; text-align:center; border-top:4px solid;}
+        .summary-card h3{font-size:12px; color:#888; margin:0; text-transform:uppercase;}
+        .summary-card .amount{font-size:28px; font-weight:bold; margin:10px 0 0;}
+        .profit-card{border-color:#27ae60;}
+        .loss-card{border-color:#e74c3c;}
+        .revenue-card{border-color:#3498db;}
+        .cost-card{border-color:#e67e22;}
+        
+        .profit{color:#27ae60;}
+        .loss{color:#e74c3c;}
+        
+        .detail-table{width:100%; background:white; border-radius:12px; overflow-x:auto; box-shadow:0 4px 15px rgba(0,0,0,0.05); border-collapse:collapse; margin-top:20px;}
+        th{background:#2c3e50; color:white; padding:12px; text-align:left;}
+        td{padding:12px; border-bottom:1px solid #eee;}
+        
+        .chart-row{display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:20px;}
+        .chart-box{background:white; padding:20px; border-radius:12px;}
+        
+        .btn-back{text-decoration:none; color:#1a1a1a; border:1px solid #1a1a1a; padding:5px 15px; border-radius:5px;}
+        
+        @media (max-width:768px){
+            .summary-grid{grid-template-columns:1fr 1fr;}
+            .chart-row{grid-template-columns:1fr;}
+        }
+    </style>
+</head><body>
+
+<div class="container">
+    <div class="header">
+        <h1>📊 ລາຍງານກຳໄລ-ຂາດທຶນ</h1>
+        <a href="gm-menu.html" class="btn-back">⬅️ ກັບຄືນແຜງຄວບຄຸມ</a>
+    </div>
+
+    <div class="filter-bar">
+        <div class="filter-group">
+            <label>ເລີ່ມວັນທີ</label>
+            <input type="date" id="date-from">
+        </div>
+        <div class="filter-group">
+            <label>ສິ້ນສຸດວັນທີ</label>
+            <input type="date" id="date-to">
+        </div>
+        <div class="filter-group">
+            <label>ເລືອກໄລຍະເວລາ</label>
+            <select id="period-select" onchange="setPeriod()">
+                <option value="custom">ເລືອກເອງ</option>
+                <option value="today">ມື້ນີ້</option>
+                <option value="week">ອາທິດນີ້</option>
+                <option value="month">ເດືອນນີ້</option>
+                <option value="year">ປີນີ້</option>
+            </select>
+        </div>
+        <button class="btn-run" onclick="generateReport()">📊 ສ້າງລາຍງານ</button>
+    </div>
+
+    <div class="summary-grid">
+        <div class="summary-card revenue-card">
+            <h3>ລາຍຮັບລວມ</h3>
+            <div class="amount" id="total-revenue">$0</div>
+        </div>
+        <div class="summary-card cost-card">
+            <h3>ຕົ້ນທຶນອາໄຫຼ່ທີ່ໃຊ້</h3>
+            <div class="amount" id="total-cost">$0</div>
+        </div>
+        <div class="summary-card profit-card">
+            <h3>ກຳໄລຂັ້ນຕົ້ນ</h3>
+            <div class="amount" id="gross-profit">$0</div>
+        </div>
+        <div class="summary-card loss-card">
+            <h3>ອັດຕາກຳໄລ</h3>
+            <div class="amount" id="profit-margin">0%</div>
+        </div>
+    </div>
+
+    <div class="chart-row">
+        <div class="chart-box">
+            <h3>ລາຍຮັບ vs ຕົ້ນທຶນ</h3>
+            <canvas id="comparison-chart"></canvas>
+        </div>
+        <div class="chart-box">
+            <h3>ລາຍຮັບຕາມໄລຍະເວລາ</h3>
+            <canvas id="trend-chart"></canvas>
+        </div>
+    </div>
+
+    <h3 style="margin-top:25px">📋 ລາຍລະອຽດວຽກທີ່ສຳເລັດ</h3>
+    <div style="overflow-x: auto;">
+        <table class="detail-table">
+            <thead>
+                <tr>
+                    <th>ວັນທີ</th>
+                    <th>ທະບຽນລົດ</th>
+                    <th>ຄ່າແຮງງານ</th>
+                    <th>ຄ່າອາໄຫຼ່</th>
+                    <th>ລາຍຮັບລວມ</th>
+                    <th>ຕົ້ນທຶນອາໄຫຼ່</th>
+                    <th>ກຳໄລ</th>
+                </tr>
+            </thead>
+            <tbody id="report-body">
+                <tr><td colspan="7" style="text-align:center">ກຳລັງໂຫຼດຂໍ້ມູນ...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
+    const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
+    const _s = supabase.createClient(u, k);
+    
+    let comparisonChart, trendChart;
+
+    function setPeriod() {
+        const period = document.getElementById('period-select').value;
+        const today = new Date();
+        let from = new Date();
+        
+        switch(period) {
+            case 'today':
+                from = today;
+                break;
+            case 'week':
+                from.setDate(today.getDate() - 7);
+                break;
+            case 'month':
+                from.setMonth(today.getMonth() - 1);
+                break;
+            case 'year':
+                from.setFullYear(today.getFullYear() - 1);
+                break;
+            default:
+                return;
+        }
+        
+        document.getElementById('date-from').value = from.toISOString().split('T')[0];
+        document.getElementById('date-to').value = today.toISOString().split('T')[0];
+        generateReport();
+    }
+
+    async function getPartsCostForJob(jobId) {
+        const { data: parts } = await _s.from('part_requests')
+            .select('quantity, part_id')
+            .eq('job_id', jobId)
+            .eq('status', 'ISSUED');
+        
+        let totalCost = 0;
+        if(parts) {
+            for(const part of parts) {
+                const { data: inv } = await _s.from('inventory')
+                    .select('unit_price')
+                    .eq('part_id', part.part_id)
+                    .single();
+                totalCost += (part.quantity * (inv?.unit_price || 0));
+            }
+        }
+        return totalCost;
+    }
+
+    async function generateReport() {
+        const from = document.getElementById('date-from').value;
+        const to = document.getElementById('date-to').value;
+        const tbody = document.getElementById('report-body');
+        
+        if(!from || !to) {
+            alert("ກະລຸນາເລືອກວັນທີ");
+            return;
+        }
+        
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">ກຳລັງຄິດໄລ່...</td></tr>';
+        
+        const { data: jobs, error } = await _s.from('job_cards')
+            .select('*')
+            .eq('current_status', 'COMPLETED')
+            .gte('arrival_time', `${from}T00:00:00`)
+            .lte('arrival_time', `${to}T23:59:59`)
+            .order('arrival_time', { ascending: true });
+        
+        if(error) {
+            tbody.innerHTML = `<tr><td colspan="7">ຜິດພາດ: ${error.message}</td></tr>`;
+            return;
+        }
+        
+        if(jobs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">ບໍ່ມີຂໍ້ມູນໃນໄລຍະເວລານີ້</td></tr>';
+            document.getElementById('total-revenue').innerText = '$0';
+            document.getElementById('total-cost').innerText = '$0';
+            document.getElementById('gross-profit').innerText = '$0';
+            document.getElementById('profit-margin').innerText = '0%';
+            return;
+        }
+        
+        let totalRevenue = 0;
+        let totalPartsCost = 0;
+        const jobDetails = [];
+        const dailyData = {};
+        
+        for(const job of jobs) {
+            const partsCost = await getPartsCostForJob(job.id);
+            const laborFee = parseFloat(job.labor_fee || 0);
+            const jobRevenue = laborFee;
+            const jobProfit = jobRevenue - partsCost;
+            
+            totalRevenue += jobRevenue;
+            totalPartsCost += partsCost;
+            
+            const dateKey = new Date(job.arrival_time).toISOString().split('T')[0];
+            if(!dailyData[dateKey]) {
+                dailyData[dateKey] = { revenue: 0, cost: 0 };
+            }
+            dailyData[dateKey].revenue += jobRevenue;
+            dailyData[dateKey].cost += partsCost;
+            
+            jobDetails.push({
+                date: job.arrival_time,
+                plate: job.vehicle_plate,
+                labor: laborFee,
+                parts_revenue: 0,
+                total_revenue: jobRevenue,
+                parts_cost: partsCost,
+                profit: jobProfit
+            });
+        }
+        
+        const grossProfit = totalRevenue - totalPartsCost;
+        const profitMargin = totalRevenue > 0 ? (grossProfit / totalRevenue * 100) : 0;
+        
+        document.getElementById('total-revenue').innerText = `$${totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+        document.getElementById('total-cost').innerText = `$${totalPartsCost.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+        document.getElementById('gross-profit').innerText = `$${grossProfit.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+        document.getElementById('profit-margin').innerHTML = profitMargin > 0 ? `${profitMargin.toFixed(1)}%` : `<span class="loss">${profitMargin.toFixed(1)}%</span>`;
+        
+        tbody.innerHTML = "";
+        jobDetails.forEach(job => {
+            const profitClass = job.profit >= 0 ? 'profit' : 'loss';
+            tbody.innerHTML += `
+                <tr>
+                    <td>${new Date(job.date).toLocaleDateString('lo-LA')}</td>
+                    <td><b>${job.plate}</b></td>
+                    <td>$${job.labor.toFixed(2)}</td>
+                    <td>$${job.parts_revenue.toFixed(2)}</td>
+                    <td>$${job.total_revenue.toFixed(2)}</td>
+                    <td>$${job.parts_cost.toFixed(2)}</td>
+                    <td class="${profitClass}">$${job.profit.toFixed(2)}</td>
+                </tr>
+            `;
+        });
+        
+        updateCharts(dailyData);
+    }
+    
+    function updateCharts(dailyData) {
+        const dates = Object.keys(dailyData).sort();
+        const revenues = dates.map(d => dailyData[d].revenue);
+        const costs = dates.map(d => dailyData[d].cost);
+        
+        const comparisonCtx = document.getElementById('comparison-chart').getContext('2d');
+        if(comparisonChart) comparisonChart.destroy();
+        comparisonChart = new Chart(comparisonCtx, {
+            type: 'bar',
+            data: {
+                labels: ['ລາຍຮັບ', 'ຕົ້ນທຶນ', 'ກຳໄລ'],
+                datasets: [{
+                    label: 'ຈຳນວນເງິນ ($)',
+                    data: [
+                        revenues.reduce((a,b) => a+b, 0),
+                        costs.reduce((a,b) => a+b, 0),
+                        revenues.reduce((a,b) => a+b, 0) - costs.reduce((a,b) => a+b, 0)
+                    ],
+                    backgroundColor: ['#3498db', '#e74c3c', '#27ae60'],
+                    borderRadius: 8
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: true }
+        });
+        
+        const trendCtx = document.getElementById('trend-chart').getContext('2d');
+        if(trendChart) trendChart.destroy();
+        trendChart = new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [
+                    { label: 'ລາຍຮັບ', data: revenues, borderColor: '#3498db', backgroundColor: 'transparent', tension: 0.3, fill: false },
+                    { label: 'ຕົ້ນທຶນ', data: costs, borderColor: '#e74c3c', backgroundColor: 'transparent', tension: 0.3, fill: false }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: true }
+        });
+    }
+    
+    window.onload = () => {
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        document.getElementById('date-from').value = firstDay.toISOString().split('T')[0];
+        document.getElementById('date-to').value = today.toISOString().split('T')[0];
+        generateReport();
+    };
+</script>
+</body></html>

@@ -1,88 +1,80 @@
 <!DOCTYPE html>
-<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>LSM RECEPTION - TUK TUK CHECK-IN</title><style>
-    body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;margin:0;padding:20px} 
-    .card{max-width:600px;margin:0 auto;background:#fff;padding:30px;border-radius:15px;box-shadow:0 8px 30px rgba(0,0,0,0.1)} 
-    h2{color:#1a1a1a;margin-top:0;border-bottom:3px solid #ff4500;padding-bottom:10px;display:flex;justify-content:space-between} 
-    .section-label{font-size:12px;font-weight:900;color:#ff4500;margin:20px 0 10px;text-transform:uppercase;letter-spacing:1px} 
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:15px} 
-    .form-group{margin-bottom:12px} 
-    label{display:block;margin-bottom:5px;font-weight:bold;font-size:13px;color:#444} 
-    input,select,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;box-sizing:border-box;font-size:14px} 
-    
-    /* Highlight for Labor Fee */
-    .labor-group { background: #fff8f1; padding: 15px; border-radius: 10px; border: 1px dashed #ff4500; margin-top: 10px;}
-    .labor-input { font-size: 18px; font-weight: bold; color: #ff4500; border: 1px solid #ff4500; }
-
-    .check-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#f9f9f9;padding:15px;border-radius:10px} 
-    .check-item{display:flex;align-items:center;font-size:13px;cursor:pointer} 
-    .check-item input{width:auto;margin-right:10px} 
-    .core-selection{display:flex;gap:10px;margin-bottom:20px} 
-    .core-btn{flex:1;padding:12px;border:2px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;text-align:center;font-size:12px;font-weight:bold;transition:0.3s} 
-    .core-btn.active{background:#ff4500;color:#fff;border-color:#ff4500} 
-    button#submit{width:100%;padding:18px;background:#1a1a1a;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:20px;transition:0.2s} 
-    button#submit:hover{background:#333} 
-    .success-msg{display:none;background:#d4edda;color:#155724;padding:15px;border-radius:8px;text-align:center;margin-top:15px;font-weight:bold}
-    .logout-btn { font-size: 14px; color: #e74c3c; cursor: pointer; text-decoration: none; border: 1px solid #e74c3c; background: none; padding: 4px 10px; border-radius: 5px; font-weight: bold; transition: 0.2s;}
-    .logout-btn:hover { background: #e74c3c; color: #fff; }
-    #search-status { font-size: 10px; font-weight: bold; margin-top: 4px; display: block; }
-</style></head><body>
+<html lang="lo"><head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSM - ຮັບລົດເຂົ້າຊ່ອມ (RECEPTION)</title>
+    <style>
+        body{font-family:'Segoe UI','Phetsarath OT',sans-serif;background:#f0f2f5;margin:0;padding:20px} 
+        .card{max-width:600px;margin:0 auto;background:#fff;padding:30px;border-radius:15px;box-shadow:0 8px 30px rgba(0,0,0,0.1)} 
+        h2{color:#1a1a1a;margin-top:0;border-bottom:3px solid #ff4500;padding-bottom:10px;display:flex;justify-content:space-between;flex-wrap:wrap} 
+        .section-label{font-size:12px;font-weight:900;color:#ff4500;margin:20px 0 10px;text-transform:uppercase;letter-spacing:1px} 
+        .grid{display:grid;grid-template-columns:1fr 1fr;gap:15px} 
+        .form-group{margin-bottom:12px} 
+        label{display:block;margin-bottom:5px;font-weight:bold;font-size:13px;color:#444} 
+        input,select,textarea{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;box-sizing:border-box;font-size:14px} 
+        .check-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#f9f9f9;padding:15px;border-radius:10px} 
+        .check-item{display:flex;align-items:center;font-size:13px;cursor:pointer} 
+        .check-item input{width:auto;margin-right:10px} 
+        .core-selection{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap} 
+        .core-btn{flex:1;padding:12px;border:2px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;text-align:center;font-size:12px;font-weight:bold;transition:0.3s} 
+        .core-btn.active{background:#ff4500;color:#fff;border-color:#ff4500} 
+        button#submit{width:100%;padding:18px;background:#1a1a1a;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:20px;transition:0.2s} 
+        button#submit:hover{background:#333} 
+        .success-msg{display:none;background:#d4edda;color:#155724;padding:15px;border-radius:8px;text-align:center;margin-top:15px;font-weight:bold}
+        .logout-btn{font-size:14px;color:#e74c3c;cursor:pointer;text-decoration:none;border:1px solid #e74c3c;background:none;padding:4px 10px;border-radius:5px;font-weight:bold;transition:0.2s}
+        .logout-btn:hover{background:#e74c3c;color:#fff}
+        #search-status{font-size:10px;font-weight:bold;margin-top:4px;display:block}
+        @media (max-width:500px){
+            .grid{grid-template-columns:1fr}
+            .check-grid{grid-template-columns:1fr}
+        }
+    </style>
+</head><body>
 
 <div class="card">
- <h2>
-        <span>🆕 E-Tricycle Check-In</span> 
-        <div style="text-align:right">
-            <div id="user-display" style="font-size:12px;color:#888;font-weight:normal;margin-bottom:5px;">Loading...</div>
-            <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                <button onclick="location.href='manager-dashboard.html'" 
-                    style="font-size:14px; color:#3498db; cursor:pointer; text-decoration:none; border:1px solid #3498db; background:none; padding:4px 10px; border-radius:5px; font-weight:bold; transition:0.2s;">
-                    🔧 Assign Mechanic
-                </button>
-                <button class="logout-btn" onclick="logout()">Logout</button>
-            </div>
+    <h2>
+        <span>🆕 ຮັບລົດເຂົ້າຊ່ອມ</span> 
+        <div>
+            <div id="user-display" style="font-size:12px;color:#888;font-weight:normal">ກຳລັງໂຫຼດ...</div>
+            <button class="logout-btn" onclick="logout()">ອອກຈາກລະບົບ</button>
         </div>
     </h2>
     
-    <div class="section-label">Vehicle & Owner Info</div>
+    <div class="section-label">🚗 ຂໍ້ມູນລົດ ແລະ ເຈົ້າຂອງ</div>
     <div class="grid">
         <div class="form-group">
-            <label>Plate Number</label>
-            <input type="text" id="plate" placeholder="e.g. 1234 VT" onblur="lookupVehicle()" style="text-transform:uppercase">
+            <label>ທະບຽນລົດ</label>
+            <input type="text" id="plate" placeholder="ຕົວຢ່າງ: 1234 VT" onblur="lookupVehicle()" style="text-transform:uppercase">
             <span id="search-status"></span>
         </div>
-        <div class="form-group"><label>Vehicle Model</label><input type="text" id="model" placeholder="E5, E7, M5"></div>
+        <div class="form-group"><label>ລຸ້ນລົດ</label><input type="text" id="model" placeholder="E5, E7, M5"></div>
     </div>
     <div class="grid">
-        <div class="form-group"><label>VIN Number</label><input type="text" id="vin" placeholder="Chassis No."></div>
-        <div class="form-group"><label>Owner Name</label><input type="text" id="owner" placeholder="Full Name"></div>
+        <div class="form-group"><label>ເລກຖັງ/ເຄື່ອງ (VIN)</label><input type="text" id="vin" placeholder="ເລກຕົວຖັງ"></div>
+        <div class="form-group"><label>ຊື່ເຈົ້າຂອງ</label><input type="text" id="owner" placeholder="ຊື່ ແລະ ນາມສະກຸນ"></div>
     </div>
-    <div class="form-group"><label>Owner Phone</label><input type="text" id="phone" placeholder="020..."></div>
+    <div class="form-group"><label>ເບີໂທລະສັບ</label><input type="text" id="phone" placeholder="020xxxxxxxx"></div>
 
-    <div class="section-label">6-Point Symptom Checklist</div>
+    <div class="section-label">📝 ອາການທີ່ຕ້ອງການສ້ອມແປງ (6 ຈຸດ)</div>
     <div class="check-grid">
-        <label class="check-item"><input type="checkbox" class="symptom" value="Suspension"> 1. Front Suspension</label>
-        <label class="check-item"><input type="checkbox" class="symptom" value="Brakes"> 2. Braking System</label>
-        <label class="check-item"><input type="checkbox" class="symptom" value="Wheels"> 3. Wheels/Tires</label>
-        <label class="check-item"><input type="checkbox" class="symptom" value="PowerTrain"> 4. Power Train</label>
-        <label class="check-item"><input type="checkbox" class="symptom" value="Electrical"> 5. Lights & Switches</label>
-        <label class="check-item"><input type="checkbox" class="symptom" value="Battery"> 6. Battery (12V/HV)</label>
+        <label class="check-item"><input type="checkbox" class="symptom" value="Suspension"> 1. ລະບົບໂຈະ (Suspension)</label>
+        <label class="check-item"><input type="checkbox" class="symptom" value="Brakes"> 2. ລະບົບເບຣກ (Brakes)</label>
+        <label class="check-item"><input type="checkbox" class="symptom" value="Wheels"> 3. ລໍ້/ຢາງ (Wheels/Tires)</label>
+        <label class="check-item"><input type="checkbox" class="symptom" value="PowerTrain"> 4. ລະບົບສົ່ງກຳລັງ (Power Train)</label>
+        <label class="check-item"><input type="checkbox" class="symptom" value="Electrical"> 5. ໄຟຟ້າ/ສະວິດ (Electrical)</label>
+        <label class="check-item"><input type="checkbox" class="symptom" value="Battery"> 6. ແບັດເຕີຣີ (Battery)</label>
     </div>
 
-    <div class="section-label">Repair Core Assignment</div>
+    <div class="section-label">🎯 ເລືອກແກນການສ້ອມແປງ</div>
     <div class="core-selection">
-        <div class="core-btn" id="core-1" onclick="setCore(1, this)">CORE 1: IN/OUT</div>
-        <div class="core-btn active" id="core-2" onclick="setCore(2, this)">CORE 2: MINOR</div>
-        <div class="core-btn" id="core-3" onclick="setCore(3, this)">CORE 3: GMS</div>
+        <div class="core-btn" id="core-1" onclick="setCore(1, this)">ແກນ 1: ທົ່ວໄປ (IN/OUT)</div>
+        <div class="core-btn active" id="core-2" onclick="setCore(2, this)">ແກນ 2: ເລັກນ້ອຍ (MINOR)</div>
+        <div class="core-btn" id="core-3" onclick="setCore(3, this)">ແກນ 3: ໃຫຍ່ (GMS)</div>
     </div>
 
-    <div class="section-label">Billing Estimate</div>
-    <div class="labor-group">
-        <label style="color:#ff4500">Service & Labor Fee ($)</label>
-        <input type="number" id="labor_fee" class="labor-input" placeholder="0.00" value="0">
-        <p style="font-size:10px; color:#999; margin-top:5px;">This fee is for labor/service only. Parts will be billed separately.</p>
-    </div>
-
-    <button id="submit" onclick="submitJob()">CREATE JOB CARD</button>
-    <div id="msg" class="success-msg">✅ Job Card #<span id="jobNo"></span> Created!</div>
+    <button id="submit" onclick="submitJob()">📋 ສ້າງໃບສັ່ງຊ່ອມ</button>
+    <div id="msg" class="success-msg">✅ ສ້າງໃບສັ່ງຊ່ອມ #<span id="jobNo"></span> ສຳເລັດ!</div>
 </div>
 
 <script>
@@ -94,7 +86,7 @@
     if(!currentStaff) {
         window.location.href = 'index.html';
     } else {
-        document.getElementById('user-display').innerText = "Staff: " + currentStaff;
+        document.getElementById('user-display').innerText = "ພະນັກງານ: " + currentStaff;
     }
 
     let selectedCore = 2;
@@ -108,9 +100,10 @@
     async function lookupVehicle() {
         const plate = document.getElementById('plate').value.trim().toUpperCase();
         const status = document.getElementById('search-status');
+        
         if (plate.length < 3) return;
 
-        status.innerText = "🔍 Checking history...";
+        status.innerText = "🔍 ກຳລັງຊອກຫາຂໍ້ມູນເກົ່າ...";
         status.style.color = "#888";
 
         const { data, error } = await _s.from('vehicles')
@@ -123,13 +116,15 @@
             document.getElementById('model').value = data.model_type || "";
             document.getElementById('owner').value = data.owner_name || "";
             document.getElementById('phone').value = data.owner_phone || "";
-            status.innerText = "✅ Data found & auto-filled.";
+            
+            status.innerText = "✅ ພົບຂໍ້ມູນ ແລະ ຕື່ມອັດຕະໂນມັດແລ້ວ.";
             status.style.color = "#27ae60";
+            
             document.querySelectorAll('.grid input').forEach(i => {
                 if(i.value) i.style.background = "#e8f5e9";
             });
         } else {
-            status.innerText = "🆕 New vehicle detected.";
+            status.innerText = "🆕 ລົດຄັນໃໝ່ ຍັງບໍ່ເຄີຍມາຊ່ອມ.";
             status.style.color = "#e67e22";
         }
     }
@@ -140,18 +135,16 @@
         const vin = document.getElementById('vin').value;
         const owner = document.getElementById('owner').value;
         const phone = document.getElementById('phone').value;
-        const labor = document.getElementById('labor_fee').value || 0; // GET LABOR FEE
         const btn = document.getElementById('submit');
         
         const symptoms = Array.from(document.querySelectorAll('.symptom:checked'))
                              .map(cb => cb.value).join(', ');
 
-        if(!plate) return alert("Plate Number is required!");
+        if(!plate) return alert("ກະລຸນາໃສ່ທະບຽນລົດ!");
 
         btn.disabled = true;
-        btn.innerText = "PROCESSING...";
+        btn.innerText = "ກຳລັງດຳເນີນການ...";
 
-        // 1. Update Vehicle Master List
         await _s.from('vehicles').upsert({ 
             plate_no: plate, 
             owner_name: owner, 
@@ -160,24 +153,33 @@
             vin_no: vin 
         });
 
-        // 2. Create Job Card with LABOR FEE
         const { data, error } = await _s.from('job_cards').insert([{
             vehicle_plate: plate,
             core_type: selectedCore,
-            symptoms: symptoms || "General Checkup",
+            symptoms: symptoms || "ກວດສອບທົ່ວໄປ",
             current_status: 'QUEUED',
             created_by: currentStaff,
-            labor_fee: parseFloat(labor) // ADDED THIS LINE
+            arrival_time: new Date()
         }]).select();
 
         if (error) {
-            alert("Error: " + error.message);
+            alert("ຜິດພາດ: " + error.message);
             btn.disabled = false;
-            btn.innerText = "CREATE JOB CARD";
+            btn.innerText = "ສ້າງໃບສັ່ງຊ່ອມ";
         } else {
             document.getElementById('jobNo').innerText = data[0].id;
             document.getElementById('msg').style.display = 'block';
-            setTimeout(() => location.reload(), 2000);
+            setTimeout(() => {
+                document.getElementById('plate').value = "";
+                document.getElementById('model').value = "";
+                document.getElementById('vin').value = "";
+                document.getElementById('owner').value = "";
+                document.getElementById('phone').value = "";
+                document.querySelectorAll('.symptom:checked').forEach(cb => cb.checked = false);
+                document.getElementById('msg').style.display = 'none';
+                btn.disabled = false;
+                btn.innerText = "ສ້າງໃບສັ່ງຊ່ອມ";
+            }, 2000);
         }
     }
 

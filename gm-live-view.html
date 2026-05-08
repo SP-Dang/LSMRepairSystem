@@ -1,90 +1,75 @@
 <!DOCTYPE html>
-<html lang="en"><head>
+<html lang="lo"><head>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <meta charset="UTF-8"><title>LSM - LIVE WORKSHOP VIEW</title>
+    <meta charset="UTF-8"><title>LSM - ສະຖານະການສ້ອມແປງສົດ</title>
     <style>
-        body{font-family:'Segoe UI',sans-serif; background:#121212; color:#eee; margin:0; padding:15px;}
-        .container{max-width:100%; margin:0 auto;}
-        .header{display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;}
-        
-        /* Board Layout */
-        .board{display:flex; gap:12px; overflow-x:auto; padding-bottom:20px; align-items: flex-start;}
-        .column{background:#1e1e1e; min-width:240px; max-width:260px; border-radius:10px; padding:12px; border-top:4px solid #444; flex-shrink: 0; min-height: 400px;}
-        
+        body{font-family:'Segoe UI','Phetsarath OT',sans-serif; background:#1a1a1a; color:#eee; margin:0; padding:20px;}
+        .container{max-width:1400px; margin:0 auto;}
+        .header{display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:2px solid #333; padding-bottom:15px; flex-wrap:wrap;}
+        .board{display:flex; gap:20px; overflow-x:auto; padding-bottom:20px;}
+        .column{background:#252525; min-width:300px; border-radius:10px; padding:15px; border-top:4px solid #444;}
         .column-reception{border-color:#3498db;}
         .column-repair{border-color:#f1c40f;}
         .column-pdi{border-color:#e67e22;}
-        
-        .column-history{
-            background: rgba(255,255,255,0.03); 
-            border-top: 4px solid #95a5a6; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            text-align: center;
+        .column-ready{border-color:#27ae60;}
+        .job-card{background:#333; padding:15px; border-radius:8px; margin-bottom:15px; box-shadow:0 4px 6px rgba(0,0,0,0.3); border-left:4px solid #555; transition:transform 0.2s;}
+        .job-card:hover{transform:translateX(5px);}
+        .plate{font-size:18px; font-weight:bold; color:#fff; display:block;}
+        .mech-name{font-size:12px; color:#f1c40f; margin-top:5px; display:block;}
+        .symptoms{font-size:11px; color:#888; margin-top:8px; font-style:italic;}
+        .time-stamp{font-size:10px; color:#555; margin-top:5px;}
+        .btn-back{text-decoration:none; color:#f1c40f; font-weight:bold; border:1px solid #f1c40f; padding:5px 15px; border-radius:5px;}
+        .refresh-btn{background:#27ae60; color:white; border:none; padding:5px 15px; border-radius:5px; cursor:pointer; margin-left:10px;}
+        .stats-bar{display:flex; gap:15px; margin-bottom:20px; flex-wrap:wrap;}
+        .stat-pill{background:#333; padding:8px 16px; border-radius:20px; font-size:13px;}
+        .stat-pill span{color:#f1c40f; font-weight:bold;}
+        @media (max-width:768px){
+            .board{flex-direction:column;}
+            .column{min-width:auto;}
         }
-
-        h3{font-size:14px; margin-top:0; text-transform:uppercase; letter-spacing:1px; margin-bottom:15px;}
-
-        /* Slim cards - Reverted to non-clickable */
-        .job-card{background:#2a2a2a; padding:12px; border-radius:8px; margin-bottom:10px; box-shadow:0 4px 6px rgba(0,0,0,0.4); border-left:4px solid #555; transition: 0.2s; text-align: left; cursor: default;}
-        
-        .plate{font-size:16px; font-weight:bold; color:#fff; display:block; margin-bottom:4px;}
-        .details{font-size:11px; color:#aaa; margin-bottom:8px; display:block;}
-        .mech-name{font-size:11px; color:#f1c40f; font-weight:bold;}
-        .symptoms{font-size:10px; color:#777; margin-top:8px; font-style:italic; border-top:1px solid #3d3d3d; padding-top:5px;}
-        
-        /* Buttons */
-        .btn-nav{text-decoration:none; font-weight:bold; padding:6px 15px; border-radius:5px; font-size:12px; transition: 0.2s; display: inline-flex; align-items: center; gap: 5px;}
-        .btn-back{color:#888; border:1px solid #444;}
-        .btn-revenue{color:#27ae60; border:1px solid #27ae60; margin-left: 10px;}
-        .btn-revenue:hover{background:#27ae60; color:white;}
-        
-        .btn-history{background: #27ae60; color: white; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; font-size: 13px; transition: 0.3s; width: 80%;}
-        .btn-history:hover{background: #2ecc71; transform: translateY(-2px);}
-        
-        #debug-log{font-size:10px; color: #555; margin-top:10px;}
     </style>
 </head><body>
 
 <div class="container">
     <div class="header">
-        <h1>📊 Workshop Live</h1>
         <div>
-            <span id="job-count" style="font-size:12px; margin-right:15px; color:#888;">Updating...</span>
-            <a href="gm-menu.html" class="btn-nav btn-back">⬅️ MENU</a>
-            <a href="revenue-report.html" class="btn-nav btn-revenue">💰 REVENUE REPORT</a>
+            <h1>📊 ສະຖານະການສ້ອມແປງສົດ</h1>
+            <small style="color:#888">ອັບເດດອັດຕະໂນມັດທຸກ 30 ວິນາທີ</small>
         </div>
+        <div>
+            <button class="refresh-btn" onclick="loadLiveView()">🔄 ຣີເຟຣດຕອນນີ້</button>
+            <a href="gm-menu.html" class="btn-back">⬅️ ກັບຄືນແຜງຄວບຄຸມ</a>
+        </div>
+    </div>
+
+    <div class="stats-bar">
+        <div class="stat-pill">🚗 ລໍຖ້າ: <span id="count-reception">0</span></div>
+        <div class="stat-pill">🔧 ກຳລັງສ້ອມແປງ: <span id="count-repair">0</span></div>
+        <div class="stat-pill">✅ ກຳລັງກວດສອບ PDI: <span id="count-pdi">0</span></div>
+        <div class="stat-pill">🏁 ສຳເລັດຮັບລົດ: <span id="count-completed">0</span></div>
     </div>
 
     <div class="board">
         <div class="column column-reception">
-            <h3 style="color:#3498db">Waiting / Queued</h3>
-            <div id="col-RECEPTION"></div>
+            <h3 style="color:#3498db">📋 ລໍຖ້າມອບໝາຍ (QUEUED)</h3>
+            <div id="col-QUEUED"></div>
         </div>
 
         <div class="column column-repair">
-            <h3 style="color:#f1c40f">In Repair</h3>
+            <h3 style="color:#f1c40f">🔧 ກຳລັງສ້ອມແປງ (IN REPAIR)</h3>
             <div id="col-IN_REPAIR"></div>
         </div>
 
         <div class="column column-pdi">
-            <h3 style="color:#e67e22">PDI Inspection</h3>
+            <h3 style="color:#e67e22">🔍 ກວດສອບ PDI (PDI)</h3>
             <div id="col-PDI"></div>
         </div>
 
-        <div class="column column-history">
-            <h3 style="color:#95a5a6">Completed</h3>
-            <div style="font-size: 40px; margin-bottom: 15px;">📜</div>
-            <p style="font-size: 11px; color: #666; margin-bottom: 20px; padding: 0 10px;">
-                Completed vehicles are automatically moved to the billing history.
-            </p>
-            <a href="repair-history.html" class="btn-history">VIEW HISTORY →</a>
+        <div class="column column-ready">
+            <h3 style="color:#27ae60">🏁 ສຳເລັດຮັບລົດ (COMPLETED)</h3>
+            <div id="col-COMPLETED"></div>
         </div>
     </div>
-    
-    <div id="debug-log">System Initializing...</div>
 </div>
 
 <script>
@@ -93,63 +78,63 @@
     const _s = supabase.createClient(u, k);
 
     async function loadLiveView() {
-        const logBox = document.getElementById('debug-log');
-        const countBox = document.getElementById('job-count');
-        
-        logBox.innerText = "Status: Refreshing Active Workshop Floor...";
-
-        const { data: jobs, error } = await _s
-            .from('job_cards')
+        const { data: jobs, error } = await _s.from('job_cards')
             .select('*')
-            .not('current_status', 'in', '("FINISHED","READY","COMPLETED")');
+            .order('created_at', { ascending: false });
         
-        if (error) {
-            logBox.innerText = "❌ ERROR: " + error.message;
+        if(error) {
+            console.error("Error loading jobs:", error);
             return;
         }
-
-        document.getElementById('col-RECEPTION').innerHTML = "";
+        
+        // Clear all columns
+        document.getElementById('col-QUEUED').innerHTML = "";
         document.getElementById('col-IN_REPAIR').innerHTML = "";
         document.getElementById('col-PDI').innerHTML = "";
+        document.getElementById('col-COMPLETED').innerHTML = "";
 
-        if (!jobs || jobs.length === 0) {
-            logBox.innerText = "✅ Workshop Floor is clear.";
-            countBox.innerText = "0 Active Jobs";
+        if(!jobs || jobs.length === 0) {
+            const emptyMsg = "<div style='text-align:center;padding:40px;color:#555'>ບໍ່ມີຂໍ້ມູນວຽກ</div>";
+            document.getElementById('col-QUEUED').innerHTML = emptyMsg;
+            document.getElementById('col-IN_REPAIR').innerHTML = emptyMsg;
+            document.getElementById('col-PDI').innerHTML = emptyMsg;
+            document.getElementById('col-COMPLETED').innerHTML = emptyMsg;
             return;
         }
 
-        logBox.innerText = `✅ Last updated: ${new Date().toLocaleTimeString()}`;
-        countBox.innerText = jobs.length + " Active Jobs";
+        let counts = { QUEUED: 0, IN_REPAIR: 0, PDI: 0, COMPLETED: 0 };
 
         jobs.forEach(job => {
-            const status = String(job.current_status || '').toUpperCase().trim();
-            let targetId = null;
-
-            if (status.includes('QUEUED') || status.includes('RECEPTION')) {
-                targetId = 'col-RECEPTION';
-            } else if (status.includes('REPAIR') || status.includes('WORKING')) {
-                targetId = 'col-IN_REPAIR';
-            } else if (status.includes('PDI')) {
-                targetId = 'col-PDI';
-            }
-
-            if (targetId) {
-                const container = document.getElementById(targetId);
+            let status = job.current_status;
+            if(status === 'FINISHED') status = 'COMPLETED';
+            
+            const container = document.getElementById('col-' + status);
+            if(container) {
+                counts[status] = (counts[status] || 0) + 1;
+                
                 const card = document.createElement('div');
                 card.className = 'job-card';
-
+                const dateStr = job.arrival_time ? new Date(job.arrival_time).toLocaleString('lo-LA') : '';
+                const coreColor = job.core_type == 1 ? '#3498db' : (job.core_type == 2 ? '#f1c40f' : '#e74c3c');
+                
                 card.innerHTML = `
-                    <span class="plate">${job.vehicle_plate}</span>
-                    <span class="details">Core: ${job.core_type || '2'}</span>
-                    <span class="mech-name">👤 ${job.assigned_mechanic_id || 'Waiting...'}</span>
-                    <div class="symptoms">${job.symptoms || 'General Checkup'}</div>
+                    <span class="plate">🚕 ${job.vehicle_plate}</span>
+                    <small style="color:${coreColor}; display:inline-block; margin-top:5px;">ແກນ CORE ${job.core_type}</small>
+                    <span class="mech-name">👤 ຊ່າງ: ${job.assigned_mechanic_id || 'ຍັງບໍ່ໄດ້ມອບໝາຍ'}</span>
+                    <div class="symptoms">📝 ອາການ: ${job.symptoms || 'ບໍ່ມີ'}</div>
+                    <div class="time-stamp">🕐 ເວລາມາ: ${dateStr}</div>
                 `;
                 container.appendChild(card);
             }
         });
+        
+        document.getElementById('count-reception').innerText = counts.QUEUED || 0;
+        document.getElementById('count-repair').innerText = counts.IN_REPAIR || 0;
+        document.getElementById('count-pdi').innerText = counts.PDI || 0;
+        document.getElementById('count-completed').innerText = counts.COMPLETED || 0;
     }
-    
+
     loadLiveView();
-    setInterval(loadLiveView, 20000); 
+    setInterval(loadLiveView, 30000);
 </script>
 </body></html>

@@ -1,55 +1,121 @@
 <!DOCTYPE html>
-<html lang="en"><head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>LSM - PERFORMANCE REPORT</title><style>
-    body{font-family:'Segoe UI',sans-serif;background:#121212;color:#eee;margin:0;padding:20px}
-    .container{max-width:1000px;margin:0 auto}
-    .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px}
-    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:20px;margin-bottom:30px}
-    .stat-card{background:#1e1e1e;padding:20px;border-radius:12px;text-align:center;border-bottom:4px solid #3498db}
-    .stat-card h3{margin:0;font-size:12px;color:#888;text-transform:uppercase}
-    .stat-card .value{font-size:32px;font-weight:bold;margin:10px 0;color:#fff}
-    .report-table{width:100%;border-collapse:collapse;background:#1e1e1e;border-radius:12px;overflow:hidden;margin-top:20px}
-    .report-table th{background:#252525;padding:15px;text-align:left;color:#3498db;font-size:13px}
-    .report-table td{padding:15px;border-top:1px solid #333;font-size:14px}
-    .rank-1{color:#f1c40f;font-weight:bold} /* Gold for top performer */
-    .btn-nav{padding:10px 20px;background:#333;color:white;text-decoration:none;border-radius:8px;font-size:14px}
-</style></head><body>
+<html lang="lo"><head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSM - ລາຍງານສະມັດຕະພາບ</title>
+    <style>
+        body{font-family:'Segoe UI','Phetsarath OT',sans-serif;background:#121212;color:#eee;margin:0;padding:20px}
+        .container{max-width:1200px;margin:0 auto}
+        .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;flex-wrap:wrap;gap:15px}
+        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:20px;margin-bottom:30px}
+        .stat-card{background:#1e1e1e;padding:20px;border-radius:12px;text-align:center;border-bottom:4px solid #3498db}
+        .stat-card h3{margin:0;font-size:12px;color:#888;text-transform:uppercase}
+        .stat-card .value{font-size:32px;font-weight:bold;margin:10px 0;color:#fff}
+        .stat-card .trend{font-size:11px;margin-top:5px}
+        .trend-up{color:#27ae60}
+        .trend-down{color:#e74c3c}
+        
+        .report-table{width:100%;border-collapse:collapse;background:#1e1e1e;border-radius:12px;overflow:hidden;margin-top:10px}
+        .report-table th{background:#252525;padding:15px;text-align:left;color:#3498db;font-size:13px}
+        .report-table td{padding:15px;border-top:1px solid #333;font-size:14px}
+        .rank-1{color:#f1c40f;font-weight:bold}
+        .rank-2{color:#c0c0c0}
+        .rank-3{color:#cd7f32}
+        
+        .btn-nav{padding:10px 20px;background:#333;color:white;text-decoration:none;border-radius:8px;font-size:14px}
+        .btn-nav:hover{background:#444}
+        .date-filter{display:flex;gap:10px;align-items:center;background:#1e1e1e;padding:10px 20px;border-radius:8px;flex-wrap:wrap}
+        .date-filter input, .date-filter select{padding:8px;border-radius:6px;border:1px solid #444;background:#2a2a2a;color:white}
+        .date-filter label{font-size:12px;color:#888}
+        
+        .chart-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:30px}
+        .chart-box{background:#1e1e1e;padding:20px;border-radius:12px}
+        .chart-box h3{margin-top:0;font-size:16px;color:#3498db}
+        
+        @media (max-width:768px){
+            .chart-row{grid-template-columns:1fr}
+            .stats-grid{grid-template-columns:1fr 1fr}
+            .report-table th,.report-table td{font-size:12px;padding:10px}
+        }
+    </style>
+</head><body>
 
 <div class="container">
     <div class="header">
-        <h1>📊 Daily Performance Report</h1>
-        <div style="display:flex; gap:10px">
-            <a href="manager-dashboard.html" class="btn-nav">⬅️ BACK TO GARAGE</a>
-            <button onclick="generateReport()" style="background:#27ae60;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer">🔄 REFRESH</button>
+        <h1>📊 ລາຍງານສະມັດຕະພາບປະຈຳວັນ</h1>
+        <div style="display:flex; gap:10px; flex-wrap:wrap">
+            <a href="manager-dashboard.html" class="btn-nav">⬅️ ກັບຄືນອູ່ຊ່ອມ</a>
+            <a href="profit-loss.html" class="btn-nav" style="background:#27ae60">💰 ລາຍງານກຳໄລ</a>
+            <button onclick="generateReport()" style="background:#3498db;color:white;border:none;padding:10px 20px;border-radius:8px;cursor:pointer">🔄 ຣີເຟຣດ</button>
         </div>
+    </div>
+
+    <div class="date-filter" style="margin-bottom:20px">
+        <div>
+            <label>ວັນທີເລີ່ມ:</label>
+            <input type="date" id="date-from">
+        </div>
+        <div>
+            <label>ວັນທີສິ້ນສຸດ:</label>
+            <input type="date" id="date-to">
+        </div>
+        <div>
+            <label>ເລືອກໄລຍະ:</label>
+            <select id="period-select" onchange="setPeriod()">
+                <option value="today">ມື້ນີ້</option>
+                <option value="week" selected>ອາທິດນີ້</option>
+                <option value="month">ເດືອນນີ້</option>
+                <option value="custom">ເລືອກເອງ</option>
+            </select>
+        </div>
+        <button class="btn-nav" onclick="generateReport()" style="background:#27ae60">🔍 ຄົ້ນຫາ</button>
     </div>
 
     <div class="stats-grid">
         <div class="stat-card" style="border-color:#27ae60">
-            <h3>Completed Today</h3>
+            <h3>✅ ວຽກທີ່ສຳເລັດ</h3>
             <div class="value" id="total-finished">0</div>
+            <div class="trend" id="trend-finished">ເມື່ອທຽບກັບໄລຍະກ່ອນ</div>
         </div>
         <div class="stat-card" style="border-color:#f1c40f">
-            <h3>Currently in Repair</h3>
+            <h3>🔧 ກຳລັງສ້ອມແປງ</h3>
             <div class="value" id="total-repair">0</div>
         </div>
         <div class="stat-card" style="border-color:#e74c3c">
-            <h3>Waiting in Queue</h3>
+            <h3>⏳ ລໍຖ້າໃນຄິວ</h3>
             <div class="value" id="total-queued">0</div>
+        </div>
+        <div class="stat-card" style="border-color:#e67e22">
+            <h3>💰 ລາຍຮັບລວມ</h3>
+            <div class="value" id="total-revenue">$0</div>
+        </div>
+    </div>
+
+    <div class="chart-row">
+        <div class="chart-box">
+            <h3>📈 ແນວໂນ້ມວຽກທີ່ສຳເລັດຕໍ່ອາທິດ</h3>
+            <canvas id="trend-chart"></canvas>
+        </div>
+        <div class="chart-box">
+            <h3>👨‍🔧 ສະມັດຕະພາບຊ່າງ</h3>
+            <canvas id="mechanic-chart"></canvas>
         </div>
     </div>
 
     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px">
         <div>
-            <h2>👨‍🔧 Mechanic Leaderboard</h2>
+            <h2>🏆 ອັນດັບຊ່າງດີເດັ່ນ</h2>
             <table class="report-table">
-                <thead><tr><th>Mechanic Name</th><th>Jobs Done</th></tr></thead>
+                <thead><tr><th>ຊື່ຊ່າງ</th><th>ວຽກທີ່ເຮັດສຳເລັດ</th><th>ລາຍຮັບທີ່ສ້າງ</th></tr></thead>
                 <tbody id="mechanic-stats"></tbody>
             </table>
         </div>
         <div>
-            <h2>🔍 PDI Accuracy (Today)</h2>
+            <h2>✅ ສະຖິຕິການກວດສອບ PDI</h2>
             <table class="report-table">
-                <thead><tr><th>Inspector</th><th>Approved</th></tr></thead>
+                <thead><tr><th>ຜູ້ກວດສອບ</th><th>ຈຳນວນທີ່ອະນຸມັດ</th><th>ອັດຕາຜ່ານ</th></tr></thead>
                 <tbody id="pdi-stats"></tbody>
             </table>
         </div>
@@ -61,57 +127,214 @@
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
     const _s = supabase.createClient(u, k);
 
-    async function generateReport() {
-        // Get today's date in Bangkok time for filtering
-        const today = new Date().toISOString().split('T')[0];
+    let trendChart, mechanicChart;
 
-        // 1. Fetch all jobs from today
+    function setPeriod() {
+        const period = document.getElementById('period-select').value;
+        const today = new Date();
+        let from = new Date();
+        let to = new Date();
+        
+        switch(period) {
+            case 'today':
+                from = today;
+                to = today;
+                break;
+            case 'week':
+                from.setDate(today.getDate() - 7);
+                to = today;
+                break;
+            case 'month':
+                from.setMonth(today.getMonth() - 1);
+                to = today;
+                break;
+            default:
+                return;
+        }
+        
+        if(period !== 'custom') {
+            document.getElementById('date-from').value = from.toISOString().split('T')[0];
+            document.getElementById('date-to').value = to.toISOString().split('T')[0];
+            generateReport();
+        }
+    }
+
+    async function getPreviousPeriodStats() {
+        const from = document.getElementById('date-from').value;
+        const to = document.getElementById('date-to').value;
+        
+        if(!from || !to) return 0;
+        
+        const fromDate = new Date(from);
+        const toDate = new Date(to);
+        const duration = toDate - fromDate;
+        const prevFrom = new Date(fromDate - duration);
+        const prevTo = new Date(fromDate);
+        
+        const { data: prevJobs } = await _s.from('job_cards')
+            .select('current_status')
+            .gte('arrival_time', prevFrom.toISOString())
+            .lte('arrival_time', prevTo.toISOString());
+        
+        return prevJobs ? prevJobs.filter(j => j.current_status === 'COMPLETED' || j.current_status === 'FINISHED').length : 0;
+    }
+
+    async function generateReport() {
+        const from = document.getElementById('date-from').value;
+        const to = document.getElementById('date-to').value;
+        
+        if(!from || !to) {
+            const today = new Date();
+            const lastWeek = new Date();
+            lastWeek.setDate(today.getDate() - 7);
+            document.getElementById('date-from').value = lastWeek.toISOString().split('T')[0];
+            document.getElementById('date-to').value = today.toISOString().split('T')[0];
+        }
+        
+        const finalFrom = document.getElementById('date-from').value;
+        const finalTo = document.getElementById('date-to').value;
+
         const { data, error } = await _s.from('job_cards')
-            .select('current_status, assigned_mechanic_id, pdi_by')
-            .gte('arrival_time', today);
+            .select('*')
+            .gte('arrival_time', `${finalFrom}T00:00:00`)
+            .lte('arrival_time', `${finalTo}T23:59:59`);
 
         if(error) return console.error(error);
 
-        // 2. Calculate Top-Level Totals
-        const finished = data.filter(j => j.current_status === 'FINISHED').length;
+        const completed = data.filter(j => j.current_status === 'COMPLETED').length;
         const repair = data.filter(j => j.current_status === 'IN_REPAIR').length;
         const queued = data.filter(j => j.current_status === 'QUEUED').length;
+        const totalRevenue = data.filter(j => j.current_status === 'COMPLETED')
+            .reduce((sum, j) => sum + (parseFloat(j.labor_fee) || 0), 0);
 
-        document.getElementById('total-finished').innerText = finished;
+        document.getElementById('total-finished').innerText = completed;
         document.getElementById('total-repair').innerText = repair;
         document.getElementById('total-queued').innerText = queued;
+        document.getElementById('total-revenue').innerText = `$${totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
 
-        // 3. Mechanic Performance (Counting finished jobs)
-        const mechCounts = {};
-        data.filter(j => j.current_status === 'FINISHED').forEach(j => {
-            mechCounts[j.assigned_mechanic_id] = (mechCounts[j.assigned_mechanic_id] || 0) + 1;
+        const prevCompleted = await getPreviousPeriodStats();
+        const trendDiff = completed - prevCompleted;
+        const trendElem = document.getElementById('trend-finished');
+        if(prevCompleted > 0) {
+            const percent = (trendDiff / prevCompleted * 100).toFixed(1);
+            trendElem.innerHTML = trendDiff >= 0 ? `📈 +${percent}% ຈາກໄລຍະກ່ອນ` : `📉 ${percent}% ຈາກໄລຍະກ່ອນ`;
+            trendElem.className = `trend ${trendDiff >= 0 ? 'trend-up' : 'trend-down'}`;
+        } else {
+            trendElem.innerHTML = '';
+        }
+
+        // Mechanic Performance with revenue
+        const mechStats = {};
+        data.filter(j => j.current_status === 'COMPLETED').forEach(j => {
+            if(!mechStats[j.assigned_mechanic_id]) {
+                mechStats[j.assigned_mechanic_id] = { count: 0, revenue: 0 };
+            }
+            mechStats[j.assigned_mechanic_id].count++;
+            mechStats[j.assigned_mechanic_id].revenue += parseFloat(j.labor_fee) || 0;
         });
 
         const mechTable = document.getElementById('mechanic-stats');
-        mechTable.innerHTML = Object.entries(mechCounts)
-            .sort((a,b) => b[1] - a[1])
-            .map(([name, count], index) => `
-                <tr class="${index === 0 ? 'rank-1' : ''}">
-                    <td>${index === 0 ? '🏆 ' : ''}${name || 'Unassigned'}</td>
-                    <td>${count}</td>
+        const sortedMechanics = Object.entries(mechStats).sort((a,b) => b[1].count - a[1].count);
+        
+        mechTable.innerHTML = sortedMechanics.map(([name, stats], index) => {
+            let rankClass = '';
+            if(index === 0) rankClass = 'rank-1';
+            else if(index === 1) rankClass = 'rank-2';
+            else if(index === 2) rankClass = 'rank-3';
+            return `
+                <tr class="${rankClass}">
+                    <td>${index === 0 ? '🏆 ' : ''}${name || 'ບໍ່ລະບຸ'}${index === 0 ? ' (ອັນດັບ 1)' : ''}</td>
+                    <td style="text-align:center">${stats.count} ວຽກ</td>
+                    <td style="text-align:right">$${stats.revenue.toFixed(2)}</td>
                 </tr>
-            `).join('') || "<tr><td colspan='2'>No jobs finished yet today.</td></tr>";
+            `;
+        }).join('') || "<tr><td colspan='3' style='text-align:center'>ຍັງບໍ່ມີວຽກທີ່ສຳເລັດ</td></tr>";
 
-        // 4. PDI Performance
-        const pdiCounts = {};
-        data.filter(j => j.current_status === 'FINISHED' && j.pdi_by).forEach(j => {
-            pdiCounts[j.pdi_by] = (pdiCounts[j.pdi_by] || 0) + 1;
+        // PDI Performance
+        const pdiStats = {};
+        data.filter(j => j.current_status === 'COMPLETED' && j.pdi_by).forEach(j => {
+            pdiStats[j.pdi_by] = (pdiStats[j.pdi_by] || 0) + 1;
         });
 
         const pdiTable = document.getElementById('pdi-stats');
-        pdiTable.innerHTML = Object.entries(pdiCounts)
+        const totalCompleted = completed;
+        pdiTable.innerHTML = Object.entries(pdiStats)
             .sort((a,b) => b[1] - a[1])
-            .map(([name, count]) => `<tr><td>${name}</td><td>${count}</td></tr>`)
-            .join('') || "<tr><td colspan='2'>No inspections done yet.</td></tr>";
+            .map(([name, count]) => {
+                const passRate = totalCompleted > 0 ? (count / totalCompleted * 100).toFixed(1) : 0;
+                return `
+                    <tr>
+                        <td>${name}</td>
+                        <td style="text-align:center">${count} ຄັນ</td>
+                        <td style="text-align:right">${passRate}%</td>
+                    </tr>
+                `;
+            }).join('') || "<tr><td colspan='3' style='text-align:center'>ຍັງບໍ່ມີການກວດສອບ</td></tr>";
+
+        updateCharts(data, finalFrom, finalTo);
     }
 
-    // Refresh report every 2 minutes
-    generateReport();
-    setInterval(generateReport, 120000);
+    function updateCharts(jobs, from, to) {
+        // Weekly trend chart
+        const dailyData = {};
+        jobs.forEach(job => {
+            const date = new Date(job.arrival_time).toISOString().split('T')[0];
+            if(!dailyData[date]) dailyData[date] = { completed: 0, total: 0 };
+            dailyData[date].total++;
+            if(job.current_status === 'COMPLETED') dailyData[date].completed++;
+        });
+        
+        const dates = Object.keys(dailyData).sort();
+        const completedCounts = dates.map(d => dailyData[d].completed);
+        
+        const trendCtx = document.getElementById('trend-chart').getContext('2d');
+        if(trendChart) trendChart.destroy();
+        trendChart = new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: dates.map(d => d.slice(5)),
+                datasets: [{
+                    label: 'ວຽກທີ່ສຳເລັດ',
+                    data: completedCounts,
+                    borderColor: '#27ae60',
+                    backgroundColor: 'rgba(39,174,96,0.1)',
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: true }
+        });
+        
+        // Mechanic pie chart
+        const mechCounts = {};
+        jobs.filter(j => j.current_status === 'COMPLETED' && j.assigned_mechanic_id)
+            .forEach(j => {
+                mechCounts[j.assigned_mechanic_id] = (mechCounts[j.assigned_mechanic_id] || 0) + 1;
+            });
+        
+        const mechCtx = document.getElementById('mechanic-chart').getContext('2d');
+        if(mechanicChart) mechanicChart.destroy();
+        mechanicChart = new Chart(mechCtx, {
+            type: 'pie',
+            data: {
+                labels: Object.keys(mechCounts),
+                datasets: [{
+                    data: Object.values(mechCounts),
+                    backgroundColor: ['#3498db', '#e74c3c', '#f1c40f', '#27ae60', '#9b59b6', '#e67e22']
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: true }
+        });
+    }
+
+    window.onload = () => {
+        const today = new Date();
+        const lastWeek = new Date();
+        lastWeek.setDate(today.getDate() - 7);
+        document.getElementById('date-from').value = lastWeek.toISOString().split('T')[0];
+        document.getElementById('date-to').value = today.toISOString().split('T')[0];
+        generateReport();
+        setInterval(generateReport, 120000);
+    };
 </script>
 </body></html>

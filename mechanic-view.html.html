@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="lo"><head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LSM - ໜ້າວຽກຊ່າງສ້ອມແປງ</title>
+    <style>
+        body{font-family:'Segoe UI','Phetsarath OT',sans-serif;background:#1e1e1e;color:#eee;margin:0;padding:15px}
+        .header{background:#333;padding:15px;border-radius:10px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #27ae60;flex-wrap:wrap;}
+        .job-card{background:#2d2d2d;border-radius:12px;padding:20px;margin-bottom:15px;box-shadow:0 4px 10px rgba(0,0,0,0.3);border-left:6px solid #27ae60}
+        .plate-no{font-size:24px;font-weight:bold;color:#fff;display:block;margin-bottom:5px}
+        .symptoms-box{background:#1a1a1a;padding:10px;border-radius:6px;font-size:13px;color:#bbb;margin:10px 0}
+        .btn-done{width:100%;padding:15px;background:#27ae60;color:white;border:none;border-radius:8px;font-weight:bold;font-size:16px;cursor:pointer;margin-top:10px}
+        .btn-scan{width:100%;padding:12px;background:#f1c40f;color:#000;border:none;border-radius:8px;font-weight:bold;font-size:14px;cursor:pointer;margin-top:5px;display:flex;align-items:center;justify-content:center;gap:8px}
+        .basket-container { margin-top: 15px; background: #1a1a1a; border: 1px dashed #f1c40f; border-radius: 8px; overflow: hidden; display: none; }
+        .basket-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #333; font-size: 13px; }
+        .btn-remove { background: #e74c3c; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer; }
+        .btn-send-all { width: 100%; background: #27ae60; color: white; border: none; padding: 12px; font-weight: bold; cursor: pointer; }
+        #scanner-container { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:1000; flex-direction:column; align-items:center; justify-content:center; }
+        #reader { width: 300px; background: white; border-radius: 10px; overflow: hidden; }
+        .close-scan { margin-top: 20px; padding: 10px 20px; background: #e74c3c; color: white; border: none; border-radius: 5px; font-weight: bold; }
+        .logout-btn{background:transparent;border:1px solid #27ae60;color:#27ae60;padding:5px 10px;border-radius:5px;font-size:12px}
+        .stock-warning{background:#e74c3c;color:white;padding:5px 10px;border-radius:5px;font-size:11px;margin-left:10px}
+        .empty-state{text-align:center;padding:50px;color:#666}
+    </style>
+</head><body>
+
+<div id="scanner-container">
+    <div id="reader"></div>
+    <button class="close-scan" onclick="stopScanner()">❌ ຍົກເລີກການສະແກນ</button>
+</div>
+
+<div class="header">
+    <div>
+        <span style="font-size:10px;color:#888;display:block">ຊ່າງປະຈຳວຽນ</span>
+        <b id="mech-name" style="font-size:18px">...</b>
+    </div>
+    <button class="logout-btn" onclick="logout()">ອອກຈາກລະບົບ</button>
+</div>
+
+<h2 style="font-size:16px;color:#888;margin-left:5px">🔧 ວຽກທີ່ກຳລັງສ້ອມແປງຂອງຂ້ອຍ</h2>
+<div id="my-jobs">ກຳລັງໂຫຼດ...</div>
+
+<script>
+    const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
+    const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
+    const _s = supabase.createClient(u, k);
+
+    const currentMech = localStorage.getItem('lsm_user_name');
+    if(!currentMech) window.location.href = 'index.html';
+    document.getElementById('mech-name').innerText = currentMech;
+
+    let html5QrCode;
+    let activeJobId = null;
+    let partBasket = [];
+
+    async function loadMyJobs() {
+        const { data, error } = await _s.from('job_cards')
+            .select('*').eq('assigned_mechanic_id', currentMech)
+            .eq('current_status', 'IN_REPAIR').order('id', { ascending: true });
+
+        const list = document.getElementById('my-jobs');
+        list.innerHTML = "";
+
+        if(!data || data.length === 0) {
+            list.innerHTML = "<div class='empty-state'>ບໍ່ມີວຽກທີ່ມອບໝາຍໃຫ້ທ່ານ ☕</div>";
+            return;
+        }
+
+        for(const job of data) {
+            // Check for pending requests for this job
+            const { data: pendingReqs } = await _s.from('part_requests')
+                .select('status')
+                .eq('job_id', job.id)
+                .eq('status', 'PENDING');
+            
+            const hasPending = pendingReqs && pendingReqs.length > 0;
+            
+            const card = document.createElement('div');
+            card.className = 'job-card';
+            card.innerHTML = `
+                <span style="font-size:10px;background:#444;padding:3px 8px;border-radius:4px">ແກນ CORE ${job.core_type}</span>
+                <span class="plate-no">🚕 ${job.vehicle_plate}</span>
+                <div class="symptoms-box"><b>📝 ອາການ:</b><br>${job.symptoms || 'ບໍ່ມີ'}</div>
+                
+                <button class="btn-scan" onclick="startScanner(${job.id})">📷 ສະແກນບາໂຄດອາໄຫຼ່</button>
+                
+                <div id="basket-display-${job.id}" class="basket-container"></div>
+                
+                ${hasPending ? '<div style="background:#e67e22;padding:8px;border-radius:5px;margin:10px 0;font-size:12px;text-align:center">⏳ ກຳລັງລໍຖ້າອາໄຫຼ່ຈາກຄັງເກັບ...</div>' : ''}
+                
+                <button class="btn-done" onclick="finishRepair(${job.id})">✅ ສ້ອມແປງສຳເລັດ (ສົ່ງ PDI)</button>
+            `;
+            list.appendChild(card);
+        }
+    }
+
+    function startScanner(jobId) {
+        activeJobId = jobId;
+        partBasket = [];
+        renderBasket();
+        document.getElementById('scanner-container').style.display = 'flex';
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, async (text) => {
+            stopScanner();
+            await addToBasket(text);
+        });
+    }
+
+    function stopScanner() {
+        if(html5QrCode) html5QrCode.stop().then(() => {
+            document.getElementById('scanner-container').style.display = 'none';
+        });
+    }
+
+    async function checkStock(partId, requestedQty) {
+        const { data } = await _s.from('inventory')
+            .select('stock_quantity, part_name')
+            .eq('part_id', partId)
+            .single();
+        
+        if(data && data.stock_quantity < requestedQty) {
+            alert(`⚠️ ສິນຄ້າ ${data.part_name} ເຫຼືອພຽງ ${data.stock_quantity} ຊິ້ນ!`);
+            return false;
+        }
+        return true;
+    }
+
+    async function addToBasket(scannedId) {
+        const cleanId = scannedId.toString().replace(/[^a-zA-Z0-9]/g, '').trim();
+        
+        const { data: partInfo } = await _s.from('inventory')
+            .select('part_name, stock_quantity').ilike('part_id', `%${cleanId}%`).maybeSingle();
+
+        const name = partInfo ? partInfo.part_name : "ບໍ່ຮູ້ຈັກ (" + cleanId + ")";
+        const qty = prompt(`ພົບ: ${name}\nຕ້ອງການຈັກຊິ້ນ? (ເຫຼືອໃນຄັງ: ${partInfo?.stock_quantity || 0})`, "1");
+
+        if(qty && !isNaN(qty) && parseInt(qty) > 0) {
+            const available = await checkStock(cleanId, parseInt(qty));
+            if(available) {
+                partBasket.push({ id: cleanId, name: name, qty: parseInt(qty) });
+                renderBasket();
+            }
+        }
+    }
+
+    function renderBasket() {
+        const basketDiv = document.getElementById('basket-display-' + activeJobId);
+        if(!basketDiv) return;
+
+        if(partBasket.length === 0) {
+            basketDiv.style.display = "none";
+            return;
+        }
+
+        basketDiv.style.display = "block";
+        let html = `<div style="padding:10px; font-size:12px; color:#f1c40f; font-weight:bold; border-bottom:1px solid #333">🛒 ລາຍການທີ່ຈະຂໍ:</div>`;
+        
+        partBasket.forEach((item, index) => {
+            html += `
+                <div class="basket-item">
+                    <span><b>${item.qty}x</b> ${item.name}</span>
+                    <button class="btn-remove" onclick="removeFromBasket(${index})">❌ ຍົກເລີກ</button>
+                </div>`;
+        });
+
+        html += `<button class="btn-send-all" onclick="sendBatchRequest()">🚀 ສົ່ງຄຳຂໍໄປຄັງເກັບ</button>`;
+        basketDiv.innerHTML = html;
+    }
+
+    function removeFromBasket(index) {
+        partBasket.splice(index, 1);
+        renderBasket();
+    }
+
+    async function sendBatchRequest() {
+        if(!confirm(`ສົ່ງຄຳຂໍ ${partBasket.length} ລາຍການໄປຄັງເກັບ?`)) return;
+
+        const inserts = partBasket.map(item => ({
+            job_id: activeJobId,
+            part_id: item.id,
+            part_name: item.name,
+            quantity: item.qty,
+            requested_by: currentMech,
+            status: 'PENDING',
+            request_time: new Date()
+        }));
+
+        const { error } = await _s.from('part_requests').insert(inserts);
+
+        if(!error) {
+            alert("✅ ສົ່ງຄຳຂໍໄປຄັງເກັບສຳເລັດ!");
+            partBasket = [];
+            document.getElementById('basket-display-' + activeJobId).style.display = "none";
+            loadMyJobs();
+        } else {
+            alert("ຜິດພາດ: " + error.message);
+        }
+    }
+
+    async function finishRepair(jobId) {
+        if(partBasket.length > 0) return alert("ກະລຸນາສົ່ງ ຫຼື ຍົກເລີກລາຍການໃນຕະກ້າກ່ອນ!");
+        
+        const laborFee = prompt("ຄ່າແຮງງານສຳລັບວຽກນີ້ (USD):", "0");
+        if(laborFee === null) return;
+        
+        const { error } = await _s.from('job_cards')
+            .update({ current_status: 'PDI', labor_fee: parseFloat(laborFee) || 0 })
+            .eq('id', jobId);
+        
+        if(!error) { 
+            alert(`✅ ສົ່ງໄປ PDI ສຳເລັດ! (ຄ່າແຮງງານ: $${parseFloat(laborFee || 0).toFixed(2)})`);
+            loadMyJobs(); 
+        } else {
+            alert("ຜິດພາດ: " + error.message);
+        }
+    }
+
+    function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+    loadMyJobs();
+    setInterval(loadMyJobs, 15000);
+</script>
+</body></html>

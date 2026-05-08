@@ -1,134 +1,124 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
+<html lang="lo"><head>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LSM - INVENTORY CONTROL PRO</title>
+    <title>LSM - ຈັດການສິນຄ້າຄັງ</title>
     <style>
-        body{font-family:'Segoe UI',sans-serif;background:#f4f7f6;margin:0;padding:20px}
-        .container{max-width:1100px;margin:0 auto}
-        .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
-        
-        /* Dashboard Stats */
+        body{font-family:'Segoe UI','Phetsarath OT',sans-serif;background:#f4f7f6;margin:0;padding:20px}
+        .container{max-width:1200px;margin:0 auto}
+        .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px}
         .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:25px}
         .stat-card{background:white;padding:20px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.05);text-align:center}
         .stat-card h3{margin:0;font-size:12px;color:#7f8c8d;text-transform:uppercase}
         .stat-card p{margin:10px 0 0;font-size:24px;font-weight:bold;color:#2c3e50}
+        .stat-card .profit{color:#27ae60}
+        .stat-card .loss{color:#e74c3c}
         
-        /* Search Panel */
-        .search-panel{background:white;padding:15px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.05);margin-bottom:20px;display:flex;gap:15px;align-items:flex-end}
-        .filter-group{display:flex;flex-direction:column;gap:5px;flex:1}
-        .filter-group label{font-size:11px;font-weight:bold;color:#666;text-transform:uppercase}
-        .filter-group input{padding:10px;border:1px solid #ddd;border-radius:6px;font-size:14px}
-
-        /* Tabs */
-        .tab-container{margin-bottom:20px; border-bottom: 2px solid #ddd; display: flex; gap: 10px;}
-        .tab-btn{padding:12px 20px; cursor:pointer; border:none; background:none; font-weight:bold; color:#7f8c8d; transition:0.3s; border-bottom: 3px solid transparent;}
-        .tab-btn.active{color:#ff4500; border-bottom: 3px solid #ff4500; margin-bottom:-2px;}
-
-        /* Tables */
-        .inventory-table{width:100%;background:white;border-radius:10px;overflow:hidden;box-shadow:0 4px 15px rgba(0,0,0,0.05);border-collapse:collapse}
+        .inventory-table{width:100%;background:white;border-radius:10px;overflow-x:auto;box-shadow:0 4px 15px rgba(0,0,0,0.05);border-collapse:collapse}
         th{background:#2c3e50;color:white;padding:15px;text-align:left}
         td{padding:15px;border-bottom:1px solid #eee;font-size:14px}
         
-        .badge{padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold;color:white;}
+        .badge{padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold}
+        .badge-low{background:#ff7675;color:white}
+        .badge-ok{background:#55efc4;color:#00b894}
+        .badge-critical{background:#e74c3c;color:white}
+        
         .btn-add{background:#27ae60;color:white;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;font-weight:bold}
         .btn-edit{background:#3498db;color:white;border:none;padding:5px 10px;border-radius:4px;cursor:pointer}
+        .btn-stock-in{background:#9b59b6;color:white;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;margin-left:5px}
         
-        /* Modal */
-        #part-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);justify-content:center;align-items:center; z-index:1000;}
-        .modal-content{background:white;padding:30px;border-radius:12px;width:400px}
-        .modal-content input{width:95%;padding:10px;margin-bottom:15px;border:1px solid #ddd;border-radius:5px}
+        .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);justify-content:center;align-items:center}
+        .modal-content{background:white;padding:30px;border-radius:12px;width:400px;max-width:90%}
+        .modal-content input,.modal-content select{width:95%;padding:10px;margin-bottom:15px;border:1px solid #ddd;border-radius:5px}
         
-        /* Analytics Cards */
-        .analytics-grid{display:grid; grid-template-columns: 1fr 1fr; gap:20px;}
-        .list-item{display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee;}
+        .chart-container{background:white;padding:20px;border-radius:10px;margin-top:20px}
+        canvas{max-height:300px}
+        
+        .search-box{padding:10px;border:1px solid #ddd;border-radius:5px;width:250px}
+        .filter-row{display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap}
+        
+        @media (max-width:768px){
+            .stats-grid{grid-template-columns:1fr 1fr}
+            .inventory-table{font-size:12px}
+            td,th{padding:8px}
+        }
     </style>
-</head>
-<body>
+</head><body>
 
 <div class="container">
-    <a href="gm-menu.html" style="text-decoration:none; color:#3498db; font-weight:bold;">⬅️ BACK TO GM MENU</a>
-    
     <div class="header">
-        <h1 style="color:#ff4500;">📦 Inventory Control Pro</h1>
-        <div style="display:flex; gap:10px;">
-            <button class="btn-add" style="background:#e74c3c;" onclick="showShoppingList()">📋 REORDER LIST</button>
-            <button class="btn-add" onclick="openModal()">+ NEW / ADD STOCK</button>
+        <div>
+            <h1>📦 ຈັດການສິນຄ້າຄັງ</h1>
+            <a href="gm-menu.html" style="color:#2980b9;text-decoration:none">⬅️ ກັບຄືນແຜງຄວບຄຸມ</a>
         </div>
+        <button class="btn-add" onclick="openModal()">+ ເພີ່ມອາໄຫຼ່ໃໝ່</button>
     </div>
 
     <div class="stats-grid">
-        <div class="stat-card"><h3>Total Parts</h3><p id="stat-count">0</p></div>
-        <div class="stat-card"><h3>Alerts (Low Stock)</h3><p id="stat-low" style="color:#e74c3c">0</p></div>
-        <div class="stat-card"><h3>Stock Valuation</h3><p id="stat-value">$0</p></div>
+        <div class="stat-card"><h3>ລາຍການທັງໝົດ</h3><p id="stat-count">0</p></div>
+        <div class="stat-card"><h3>ສິນຄ້າເຫຼືອໜ້ອຍ (&lt;5)</h3><p id="stat-low" style="color:#e74c3c">0</p></div>
+        <div class="stat-card"><h3>ມູນຄ່າສິນຄ້າຄັງ</h3><p id="stat-value">$0</p></div>
+        <div class="stat-card"><h3>ມູນຄ່າອາໄຫຼ່ທີ່ໃຊ້ແລ້ວ (ເດືອນນີ້)</h3><p id="stat-parts-used" style="color:#e67e22">$0</p></div>
     </div>
 
-    <div class="search-panel">
-        <div class="filter-group"><label>Search Part ID</label><input type="text" id="search-id" onkeyup="filterInventory()"></div>
-        <div class="filter-group"><label>Search Part Name</label><input type="text" id="search-name" onkeyup="filterInventory()"></div>
-        <button class="btn-add" style="background:#34495e; display:none;" id="btn-reset-list" onclick="loadInventory()">SHOW ALL STOCK</button>
+    <div class="filter-row">
+        <input type="text" id="search-input" class="search-box" placeholder="🔍 ຄົ້ນຫາອາໄຫຼ່..." onkeyup="filterTable()">
+        <select id="stock-filter" onchange="filterTable()" class="search-box">
+            <option value="all">ສະແດງທັງໝົດ</option>
+            <option value="low">ສະແດງສິນຄ້າເຫຼືອໜ້ອຍ</option>
+            <option value="critical">ສະແດງສິນຄ້າຈະໝົດ</option>
+        </select>
     </div>
 
-    <div class="tab-container">
-        <button class="tab-btn active" id="tab-stock" onclick="switchTab('stock')">CURRENT STOCK</button>
-        <button class="tab-btn" id="tab-in" onclick="switchTab('in')">📥 STOCK IN</button>
-        <button class="tab-btn" id="tab-out" onclick="switchTab('out')">📤 STOCK OUT</button>
-        <button class="tab-btn" id="tab-charts" onclick="switchTab('charts')">📊 PERFORMANCE</button>
-    </div>
-
-    <div id="section-stock">
+    <div style="overflow-x: auto;">
         <table class="inventory-table">
             <thead>
-                <tr><th>ID</th><th>Part Name</th><th>Qty</th><th>Min Level</th><th>Price</th><th>Status</th><th>Action</th></tr>
+                <tr>
+                    <th>ລະຫັດອາໄຫຼ່</th>
+                    <th>ຊື່ອາໄຫຼ່</th>
+                    <th>ຈຳນວນຄັງ</th>
+                    <th>ລາຄາ/ໜ່ວຍ</th>
+                    <th>ມູນຄ່າລວມ</th>
+                    <th>ສະຖານະ</th>
+                    <th>ຈັດການ</th>
+                </tr>
             </thead>
             <tbody id="inventory-body"></tbody>
         </table>
     </div>
 
-    <div id="section-in" style="display:none;">
-        <table class="inventory-table" style="border-top: 5px solid #27ae60;">
-            <thead><tr><th>Date</th><th>Part Name</th><th>Qty Added</th><th>Ref</th><th>Staff</th></tr></thead>
-            <tbody id="in-body"></tbody>
-        </table>
+    <div class="chart-container">
+        <h3>📈 ມູນຄ່າສິນຄ້າຄັງແຍກຕາມປະເພດ</h3>
+        <canvas id="inventory-chart"></canvas>
     </div>
+</div>
 
-    <div id="section-out" style="display:none;">
-        <table class="inventory-table" style="border-top: 5px solid #e67e22;">
-            <thead><tr><th>Date</th><th>Part Name</th><th>Qty Issued</th><th>Job</th><th>Staff</th></tr></thead>
-            <tbody id="out-body"></tbody>
-        </table>
-    </div>
-
-    <div id="section-charts" style="display:none;">
-        <div class="analytics-grid">
-            <div class="stat-card">
-                <h3>Top Parts Consumed</h3>
-                <div id="top-parts-list" style="margin-top:10px;"></div>
-            </div>
-            <div class="stat-card">
-                <h3>Mechanic Usage (Units)</h3>
-                <div id="mechanic-list" style="margin-top:10px;"></div>
-            </div>
+<div id="part-modal" class="modal">
+    <div class="modal-content">
+        <h2 id="modal-title">ເພີ່ມອາໄຫຼ່ໃໝ່</h2>
+        <input type="text" id="part-id" placeholder="ລະຫັດອາໄຫຼ່ (ເຊັ່ນ 1001)">
+        <input type="text" id="part-name" placeholder="ຊື່ອາໄຫຼ່">
+        <input type="number" id="part-qty" placeholder="ຈຳນວນໃນຄັງ">
+        <input type="number" id="part-price" placeholder="ລາຄາຕໍ່ໜ່ວຍ">
+        <div style="display:flex; gap:10px">
+            <button class="btn-add" style="flex:1" onclick="savePart()">ບັນທຶກ</button>
+            <button onclick="closeModal()" style="flex:1; background:#95a5a6; border:none; color:white; border-radius:5px">ຍົກເລີກ</button>
         </div>
     </div>
 </div>
 
-<div id="part-modal">
+<div id="stock-modal" class="modal">
     <div class="modal-content">
-        <h2 id="modal-title" style="margin-top:0;">Stock Entry</h2>
-        <input type="text" id="part-id" placeholder="Part ID">
-        <input type="text" id="part-name" placeholder="Part Name">
-        <div style="display:flex; gap:10px;">
-            <div style="flex:1;"><label style="font-size:11px;">Current Stock</label><input type="number" id="part-qty"></div>
-            <div style="flex:1;"><label style="font-size:11px;">Alert Level (Min)</label><input type="number" id="part-reorder" placeholder="e.g. 5"></div>
-        </div>
-        <label style="font-size:11px;">Unit Price ($)</label>
-        <input type="number" id="part-price" placeholder="Price">
-        <div style="display:flex; gap:10px; margin-top:10px;">
-            <button class="btn-add" style="flex:1" onclick="savePart()">CONFIRM</button>
-            <button onclick="closeModal()" style="flex:1; background:#95a5a6; border:none; color:white; border-radius:5px; cursor:pointer;">CANCEL</button>
+        <h2>ເພີ່ມສິນຄ້າເຂົ້າຄັງ</h2>
+        <input type="text" id="stock-part-id" readonly style="background:#f0f0f0">
+        <input type="text" id="stock-part-name" readonly style="background:#f0f0f0">
+        <input type="number" id="stock-qty" placeholder="ຈຳນວນທີ່ຕ້ອງການເພີ່ມ">
+        <input type="number" id="stock-cost" placeholder="ລາຄາທີ່ຊື້ມາ (ຕໍ່ໜ່ວຍ)">
+        <div style="display:flex; gap:10px; margin-top:10px">
+            <button onclick="addStock()" style="flex:1; background:#27ae60; color:white; border:none; padding:10px; border-radius:5px">ຢືນຢັນການເພີ່ມ</button>
+            <button onclick="closeStockModal()" style="flex:1; background:#95a5a6; border:none; color:white; border-radius:5px">ຍົກເລີກ</button>
         </div>
     </div>
 </div>
@@ -138,59 +128,153 @@
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
     const _s = supabase.createClient(u, k);
 
-    let isEditing = false, originalQty = 0;
-
-    function switchTab(tab) {
-        document.querySelectorAll('.container > div[id^="section-"]').forEach(d => d.style.display = 'none');
-        document.getElementById(`section-${tab}`).style.display = 'block';
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(`tab-${tab}`).classList.add('active');
-        if(tab === 'in' || tab === 'out') loadLogs(tab);
-        if(tab === 'charts') loadAnalytics();
-    }
+    let isEditing = false;
+    let inventoryData = [];
+    let chart;
 
     async function loadInventory() {
-        document.getElementById('btn-reset-list').style.display = "none";
-        const { data, error } = await _s.from('inventory').select('*').order('part_id');
+        const { data, error } = await _s.from('inventory').select('*').order('part_name');
         if(error) return;
-
-        const body = document.getElementById('inventory-body');
-        body.innerHTML = "";
-        let count=0, low=0, value=0;
-
-        data.forEach(item => {
-            count++;
-            const min = item.reorder_level || 5; 
-            const isLow = item.stock_quantity <= min;
-            if(isLow) low++;
-            value += (item.stock_quantity * (item.unit_price || 0));
-
-            body.innerHTML += `
-                <tr data-low="${isLow}">
-                    <td><b>${item.part_id}</b></td>
-                    <td>${item.part_name}</td>
-                    <td>${item.stock_quantity}</td>
-                    <td>${min}</td>
-                    <td>$${(item.unit_price || 0).toFixed(2)}</td>
-                    <td><span class="badge" style="background:${isLow ? '#e74c3c' : '#27ae60'}">${isLow ? 'LOW STOCK' : 'OK'}</span></td>
-                    <td><button class="btn-edit" onclick="editItem('${item.part_id}','${item.part_name}',${item.stock_quantity},${item.unit_price},${min})">EDIT</button></td>
-                </tr>`;
-        });
-        document.getElementById('stat-count').innerText = count;
-        document.getElementById('stat-low').innerText = low;
-        document.getElementById('stat-value').innerText = "$" + value.toLocaleString();
+        
+        inventoryData = data;
+        renderTable(data);
+        updateStats(data);
+        updateChart(data);
+        loadPartsUsedThisMonth();
     }
 
-    function showShoppingList() {
-        const rows = document.querySelectorAll('#inventory-body tr');
-        let found = 0;
-        rows.forEach(r => {
-            const isLow = r.getAttribute('data-low') === "true";
-            r.style.display = isLow ? "" : "none";
-            if(isLow) found++;
+    function renderTable(data) {
+        const body = document.getElementById('inventory-body');
+        body.innerHTML = "";
+
+        let totalItems = 0;
+        let lowStockCount = 0;
+        let totalValue = 0;
+
+        data.forEach(item => {
+            totalItems++;
+            const isLow = item.stock_quantity <= 5;
+            const isCritical = item.stock_quantity <= 2;
+            if(isLow) lowStockCount++;
+            totalValue += (item.stock_quantity * (item.unit_price || 0));
+
+            let statusBadge = '';
+            if(isCritical) statusBadge = `<span class="badge badge-critical">⚠️ ຈະໝົດແລ້ວ</span>`;
+            else if(isLow) statusBadge = `<span class="badge badge-low">📦 ເຫຼືອໜ້ອຍ</span>`;
+            else statusBadge = `<span class="badge badge-ok">✅ ພໍສົມຄວນ</span>`;
+
+            body.innerHTML += `
+                <tr>
+                    <td><b>${item.part_id}</b></td>
+                    <td>${item.part_name}</td>
+                    <td style="font-weight:bold; ${isCritical ? 'color:#e74c3c' : ''}">${item.stock_quantity}</td>
+                    <td>$${(item.unit_price || 0).toFixed(2)}</td>
+                    <td>$${((item.stock_quantity || 0) * (item.unit_price || 0)).toFixed(2)}</td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        <button class="btn-edit" onclick="editItem('${item.part_id}', '${item.part_name}', ${item.stock_quantity}, ${item.unit_price})">✏️ ແກ້ໄຂ</button>
+                        <button class="btn-stock-in" onclick="openStockModal('${item.part_id}', '${item.part_name}')">📥 ເພີ່ມສິນຄ້າ</button>
+                    </td>
+                </tr>`;
         });
-        document.getElementById('btn-reset-list').style.display = "inline-block";
-        if(found === 0) alert("No items currently below reorder levels!");
+    }
+
+    function filterTable() {
+        const searchTerm = document.getElementById('search-input').value.toLowerCase();
+        const stockFilter = document.getElementById('stock-filter').value;
+        
+        let filtered = inventoryData.filter(item => 
+            item.part_name.toLowerCase().includes(searchTerm) || 
+            item.part_id.toLowerCase().includes(searchTerm)
+        );
+        
+        if(stockFilter === 'low') {
+            filtered = filtered.filter(item => item.stock_quantity <= 5);
+        } else if(stockFilter === 'critical') {
+            filtered = filtered.filter(item => item.stock_quantity <= 2);
+        }
+        
+        renderTable(filtered);
+    }
+
+    function updateStats(data) {
+        const totalItems = data.length;
+        const lowStockCount = data.filter(i => i.stock_quantity <= 5).length;
+        const totalValue = data.reduce((acc, curr) => acc + (curr.stock_quantity * (curr.unit_price || 0)), 0);
+        
+        document.getElementById('stat-count').innerText = totalItems;
+        document.getElementById('stat-low').innerText = lowStockCount;
+        document.getElementById('stat-value').innerText = "$" + totalValue.toLocaleString();
+    }
+
+    function updateChart(data) {
+        const ctx = document.getElementById('inventory-chart').getContext('2d');
+        const labels = data.slice(0, 10).map(i => i.part_name);
+        const values = data.slice(0, 10).map(i => (i.stock_quantity || 0) * (i.unit_price || 0));
+        
+        if(chart) chart.destroy();
+        
+        chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'ມູນຄ່າໃນຄັງ ($)',
+                    data: values,
+                    backgroundColor: '#3498db',
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'top' }
+                }
+            }
+        });
+    }
+
+    async function loadPartsUsedThisMonth() {
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        
+        const { data: requests } = await _s.from('part_requests')
+            .select('*, inventory(unit_price)')
+            .eq('status', 'ISSUED')
+            .gte('request_time', firstDay);
+        
+        let totalPartsCost = 0;
+        if(requests) {
+            requests.forEach(req => {
+                const price = req.inventory ? req.inventory.unit_price : 0;
+                totalPartsCost += (req.quantity * price);
+            });
+        }
+        
+        document.getElementById('stat-parts-used').innerText = "$" + totalPartsCost.toLocaleString();
+    }
+
+    function openModal() {
+        isEditing = false;
+        document.getElementById('modal-title').innerText = "ເພີ່ມອາໄຫຼ່ໃໝ່";
+        document.getElementById('part-id').disabled = false;
+        document.getElementById('part-id').value = "";
+        document.getElementById('part-name').value = "";
+        document.getElementById('part-qty').value = "";
+        document.getElementById('part-price').value = "";
+        document.getElementById('part-modal').style.display = 'flex';
+    }
+
+    function editItem(id, name, qty, price) {
+        isEditing = true;
+        document.getElementById('modal-title').innerText = "ແກ້ໄຂຂໍ້ມູນອາໄຫຼ່";
+        document.getElementById('part-id').value = id;
+        document.getElementById('part-id').disabled = true;
+        document.getElementById('part-name').value = name;
+        document.getElementById('part-qty').value = qty;
+        document.getElementById('part-price').value = price;
+        document.getElementById('part-modal').style.display = 'flex';
     }
 
     async function savePart() {
@@ -198,73 +282,86 @@
         const name = document.getElementById('part-name').value;
         const qty = parseInt(document.getElementById('part-qty').value);
         const price = parseFloat(document.getElementById('part-price').value);
-        const reorder = parseInt(document.getElementById('part-reorder').value) || 5;
 
-        const partData = { part_id: id, part_name: name, stock_quantity: qty, unit_price: price, reorder_level: reorder };
+        if(!id || !name) return alert("ກະລຸນາຕື່ມລະຫັດ ແລະ ຊື່ອາໄຫຼ່");
 
-        let res;
-        if(isEditing) res = await _s.from('inventory').update(partData).eq('part_id', id);
-        else res = await _s.from('inventory').insert([partData]);
+        const partData = { part_id: id, part_name: name, stock_quantity: qty || 0, unit_price: price || 0 };
 
-        if(res.error) return alert(res.error.message);
-
-        let logQty = isEditing ? (qty - originalQty) : qty;
-        if (logQty > 0) {
-            await _s.from('transaction_log').insert([{part_id:id, part_name:name, type:'IN', quantity:logQty, reference:'Purchase/Add', staff_name:'Admin'}]);
-        }
-        closeModal(); loadInventory();
-    }
-
-    async function loadLogs(mode) {
-        const target = mode === 'in' ? 'in-body' : 'out-body';
-        const tbody = document.getElementById(target);
-        tbody.innerHTML = "<tr><td colspan='5' style='text-align:center'>Loading...</td></tr>";
-
-        if(mode === 'out') {
-            const { data } = await _s.from('part_requests').select('*').eq('status','ISSUED').order('request_time',{ascending:false});
-            tbody.innerHTML = data.map(o => `<tr><td>${new Date(o.request_time).toLocaleDateString()}</td><td>${o.part_name}</td><td style="color:red">-${o.quantity}</td><td>#${o.job_id}</td><td>${o.issued_by}</td></tr>`).join('');
+        let result;
+        if(isEditing) {
+            result = await _s.from('inventory').update(partData).eq('part_id', id);
         } else {
-            const { data } = await _s.from('transaction_log').select('*').eq('type','IN').order('created_at',{ascending:false});
-            tbody.innerHTML = data.map(i => `<tr><td>${new Date(i.created_at).toLocaleDateString()}</td><td>${i.part_name}</td><td style="color:green">+${i.quantity}</td><td>${i.reference}</td><td>${i.staff_name}</td></tr>`).join('');
+            result = await _s.from('inventory').insert([partData]);
+        }
+
+        if(!result.error) {
+            alert("ບັນທຶກສຳເລັດ!");
+            closeModal();
+            loadInventory();
+        } else {
+            alert("ຜິດພາດ: " + result.error.message);
         }
     }
 
-    async function loadAnalytics() {
-        const { data: issues } = await _s.from('part_requests').select('part_name, quantity, issued_by').eq('status', 'ISSUED');
-        if(!issues) return;
-        const mechMap = {}, partMap = {};
-        issues.forEach(i => {
-            const m = i.issued_by || "Unknown";
-            mechMap[m] = (mechMap[m] || 0) + i.quantity;
-            partMap[i.part_name] = (partMap[i.part_name] || 0) + i.quantity;
-        });
+    let currentStockPart = { id: '', name: '' };
 
-        document.getElementById('mechanic-list').innerHTML = Object.entries(mechMap).sort((a,b)=>b[1]-a[1]).map(([n,q])=>`<div class="list-item"><span>${n}</span><b>${q} units</b></div>`).join('');
-        document.getElementById('top-parts-list').innerHTML = Object.entries(partMap).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,q])=>`<div class="list-item"><span>${n}</span><b>${q} units</b></div>`).join('');
+    function openStockModal(id, name) {
+        currentStockPart = { id, name };
+        document.getElementById('stock-part-id').value = id;
+        document.getElementById('stock-part-name').value = name;
+        document.getElementById('stock-qty').value = "";
+        document.getElementById('stock-cost').value = "";
+        document.getElementById('stock-modal').style.display = 'flex';
     }
 
-    function editItem(id, name, qty, price, reorder) {
-        isEditing = true; originalQty = qty;
-        document.getElementById('part-id').value = id;
-        document.getElementById('part-id').disabled = true;
-        document.getElementById('part-name').value = name;
-        document.getElementById('part-qty').value = qty;
-        document.getElementById('part-price').value = price;
-        document.getElementById('part-reorder').value = reorder;
-        document.getElementById('part-modal').style.display = 'flex';
+    async function addStock() {
+        const qty = parseInt(document.getElementById('stock-qty').value);
+        const cost = parseFloat(document.getElementById('stock-cost').value);
+        
+        if(!qty || qty <= 0) return alert("ກະລຸນາໃສ່ຈຳນວນທີ່ຖືກຕ້ອງ");
+        
+        const { data: current } = await _s.from('inventory')
+            .select('stock_quantity, unit_price')
+            .eq('part_id', currentStockPart.id)
+            .single();
+        
+        const newQty = (current.stock_quantity || 0) + qty;
+        let newPrice = current.unit_price;
+        
+        if(cost && cost > 0) {
+            const totalValue = (current.stock_quantity * current.unit_price) + (qty * cost);
+            newPrice = totalValue / newQty;
+        }
+        
+        const { error } = await _s.from('inventory')
+            .update({ stock_quantity: newQty, unit_price: newPrice })
+            .eq('part_id', currentStockPart.id);
+        
+        if(cost) {
+            await _s.from('stock_transactions').insert([{
+                part_id: currentStockPart.id,
+                part_name: currentStockPart.name,
+                quantity: qty,
+                cost_per_unit: cost,
+                type: 'IN',
+                staff_name: localStorage.getItem('lsm_user_name'),
+                created_at: new Date()
+            }]);
+        }
+        
+        if(!error) {
+            alert(`ເພີ່ມສິນຄ້າ ${qty} ຊິ້ນ ສຳເລັດ!`);
+            closeStockModal();
+            loadInventory();
+        } else {
+            alert("ຜິດພາດ: " + error.message);
+        }
     }
 
-    function filterInventory() {
-        const idV = document.getElementById('search-id').value.toUpperCase();
-        const nameV = document.getElementById('search-name').value.toUpperCase();
-        document.querySelectorAll('#inventory-body tr').forEach(r => {
-            r.style.display = (r.cells[0].innerText.includes(idV) && r.cells[1].innerText.toUpperCase().includes(nameV)) ? "" : "none";
-        });
-    }
-
-    function openModal() { isEditing=false; document.getElementById('part-id').disabled=false; document.getElementById('part-id').value=""; document.getElementById('part-name').value=""; document.getElementById('part-qty').value=""; document.getElementById('part-price').value=""; document.getElementById('part-reorder').value="5"; document.getElementById('part-modal').style.display='flex'; }
     function closeModal() { document.getElementById('part-modal').style.display = 'none'; }
+    function closeStockModal() { document.getElementById('stock-modal').style.display = 'none'; }
+
     loadInventory();
+    setInterval(loadInventory, 30000);
 </script>
-</body>
-</html>
+</body></html>

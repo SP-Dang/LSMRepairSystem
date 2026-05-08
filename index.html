@@ -1,41 +1,27 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="lo">
 <head>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LSM - Secure Login</title>
+    <title>ລະບົບສ້ອມແປງ LSM - ເຂົ້າສູ່ລະບົບ</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #1a2a3a; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-card { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 100%; max-width: 350px; text-align: center; }
-        h1 { color: #1a2a3a; margin-bottom: 5px; font-size: 24px; }
-        p { color: #7f8c8d; font-size: 14px; margin-bottom: 25px; }
-        select, input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        .btn-login { width: 100%; padding: 12px; background: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.3s; }
-        .btn-login:hover { background: #219150; }
-        .btn-login:disabled { background: #bdc3c7; cursor: not-allowed; }
-        #msg { margin-top: 15px; font-size: 13px; font-weight: bold; }
+        body { font-family: 'Segoe UI', 'Phetsarath OT', sans-serif; background: #1a1a1a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background: #222; padding: 40px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; width: 300px; border-top: 4px solid #ff4500; }
+        h1 { color: #ff4500; margin-bottom: 25px; font-size: 24px; letter-spacing: 1px; }
+        input { width: 100%; padding: 15px; margin-bottom: 20px; border-radius: 8px; border: 1px solid #333; background: #111; color: white; font-size: 20px; text-align: center; letter-spacing: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: #ff4500; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #e63e00; }
+        .loading { display: none; color: #888; font-size: 12px; margin-top: 10px; }
     </style>
 </head>
 <body>
 
 <div class="login-card">
-    <h1>LSM SYSTEMS</h1>
-    <p>Please select your role and enter PIN</p>
-
-    <select id="role-select">
-        <option value="GM">GENERAL MANAGER</option>
-        <option value="RECEPTIONIST">RECEPTIONIST</option>
-        <option value="MECHANIC">MECHANIC</option>
-        <option value="PDI">PDI / INSPECTION</option>
-        <option value="WAREHOUSE">WAREHOUSE</option>
-    </select>
-
-    <input type="password" id="pin-input" placeholder="Enter 4-Digit PIN" maxlength="4" inputmode="numeric">
-
-    <button class="btn-login" id="login-btn" onclick="handleLogin()">SECURE LOGIN</button>
-    
-    <div id="msg"></div>
+    <h1>ລະບົບ LSM</h1>
+    <input type="password" id="pin-input" placeholder="ໃສ່ລະຫັດ 4 ຕົວເລກ" maxlength="4" inputmode="numeric">
+    <button id="login-btn" onclick="login()">ເຂົ້າສູ່ລະບົບ</button>
+    <div id="loader" class="loading">ກຳລັງກວດສອບລະຫັດ...</div>
 </div>
 
 <script>
@@ -43,27 +29,20 @@
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
     const _s = supabase.createClient(u, k);
 
-    async function handleLogin() {
-        const role = document.getElementById('role-select').value;
+    async function login() {
         const pin = document.getElementById('pin-input').value;
         const btn = document.getElementById('login-btn');
-        const msg = document.getElementById('msg');
+        const loader = document.getElementById('loader');
 
-        if (!pin) {
-            msg.style.color = "#e74c3c";
-            msg.innerText = "⚠️ Please enter your PIN";
-            return;
-        }
+        if (!pin) return alert("ກະລຸນາໃສ່ລະຫັດ 4 ຕົວເລກ");
 
         btn.disabled = true;
-        btn.innerText = "VERIFYING...";
-        msg.innerText = "";
+        btn.innerText = "ກຳລັງກວດສອບ...";
+        loader.style.display = "block";
 
         try {
-            const { data, error } = await _s
-                .from('staff')
-                .select('name, role')
-                .eq('role', role)
+            const { data, error } = await _s.from('staff')
+                .select('name, role, pin')
                 .eq('pin', pin)
                 .maybeSingle();
 
@@ -71,50 +50,49 @@
 
             if (data) {
                 localStorage.setItem('lsm_user_name', data.name);
-                localStorage.setItem('lsm_role', data.role);
+                localStorage.setItem('lsm_user_role', data.role);
 
-                msg.style.color = "#27ae60";
-                msg.innerText = "✅ Access Granted! Redirecting...";
-
-           setTimeout(() => {
-    if (data.role === 'GM') {
-        window.location.href = 'gm-menu.html';
-    } 
-    else if (data.role === 'RECEPTIONIST') {
-        window.location.href = 'reception-checkin.html';
-    } 
-    else if (data.role === 'MECHANIC') {
-        window.location.href = 'mechanic-view.html';
-    } 
-    else if (data.role === 'PDI') {
-        // Pointing exactly to your GitHub file name
-        window.location.href = 'pdi-release.html'; 
-    } 
-    else if (data.role === 'WAREHOUSE') {
-        window.location.href = 'warehouse-parts.html';
-    }
-}, 1000);
-
+                const role = data.role ? data.role.toUpperCase() : "NONE";
+                
+                if (role === 'MANAGER') {
+                    window.location.href = 'manager-dashboard.html';
+                } else if (role === 'RECEPTIONIST') {
+                    window.location.href = 'reception-checkin.html';
+                } else if (role === 'MECHANIC') {
+                    window.location.href = 'mechanic-view.html';
+                } else if (role === 'PDI') {
+                    window.location.href = 'pdi-release.html';
+                } else if (role === 'WAREHOUSE') {
+                    window.location.href = 'warehouse-parts.html';
+                } else if (role === 'GM') {
+                    window.location.href = 'gm-menu.html';
+                } else {
+                    alert("ບໍ່ມີສິດເຂົ້າໃຊ້: ບົດບາດ '" + role + "' ບໍ່ຖືກຕ້ອງ");
+                    resetUI();
+                }
             } else {
-                msg.style.color = "#e74c3c";
-                msg.innerText = "❌ Incorrect PIN for " + role;
-                btn.disabled = false;
-                btn.innerText = "SECURE LOGIN";
+                alert("❌ ລະຫັດບໍ່ຖືກຕ້ອງ");
+                resetUI();
             }
-
         } catch (err) {
-            console.error(err);
-            msg.style.color = "#e74c3c";
-            msg.innerText = "System Error: " + err.message;
-            btn.disabled = false;
-            btn.innerText = "SECURE LOGIN";
+            console.error("Login Error:", err);
+            alert("ລະບົບຜິດພາດ: " + err.message);
+            resetUI();
         }
     }
 
+    function resetUI() {
+        const btn = document.getElementById('login-btn');
+        const loader = document.getElementById('loader');
+        btn.disabled = false;
+        btn.innerText = "ເຂົ້າສູ່ລະບົບ";
+        loader.style.display = "none";
+        document.getElementById('pin-input').value = "";
+    }
+
     document.getElementById('pin-input').addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') handleLogin();
+        if (e.key === 'Enter') login();
     });
 </script>
-
 </body>
 </html>

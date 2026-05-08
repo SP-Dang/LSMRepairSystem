@@ -1,69 +1,107 @@
 <!DOCTYPE html>
 <html lang="lo"><head>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <meta charset="UTF-8"><title>LSM - ແຜງຄວບຄຸມ GM</title>
+    <meta charset="UTF-8"><title>LSM - ສະຖານະການສ້ອມແປງສົດ</title>
     <style>
-        body{font-family:'Segoe UI','Phetsarath OT',sans-serif; background:#f0f2f5; margin:0; padding:20px;}
-        .gm-header{background:#1a2a3a; color:white; padding:30px; border-radius:15px; margin-bottom:25px; text-align:center; position:relative;}
-        .menu-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:20px;}
-        .menu-card{background:white; padding:25px; border-radius:15px; text-decoration:none; color:#333; 
-                   box-shadow:0 4px 15px rgba(0,0,0,0.05); transition:transform 0.2s; border-top:5px solid #27ae60; position:relative;}
-        .menu-card:hover{transform:translateY(-5px); box-shadow:0 8px 25px rgba(0,0,0,0.1);}
-        .card-icon{font-size:35px; margin-bottom:10px; display:block;}
-        .card-title{font-size:18px; font-weight:bold; color:#2c3e50;}
-        .card-desc{font-size:13px; color:#7f8c8d; margin-top:5px;}
-        .stat-badge { position:absolute; top:15px; right:15px; background:#e74c3c; color:white; 
-                      padding:4px 10px; border-radius:20px; font-size:11px; font-weight:bold; display:none; }
-        .badge-green { background:#27ae60; }
-        .logout-btn { position:absolute; top:10px; right:10px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.3); color:white; padding:5px 12px; border-radius:5px; cursor:pointer; font-size:12px; }
+        body{font-family:'Segoe UI','Phetsarath OT',sans-serif; background:#1a1a1a; color:#eee; margin:0; padding:20px;}
+        .container{max-width:1600px; margin:0 auto;}
+        .header{display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:2px solid #333; padding-bottom:15px; flex-wrap:wrap;}
+        .stats-bar{display:flex; gap:15px; margin-bottom:20px; flex-wrap:wrap;}
+        .stat-pill{background:#333; padding:6px 12px; border-radius:20px; font-size:12px;}
+        .stat-pill span{color:#f1c40f; font-weight:bold;}
+        
+        /* Compact Board Layout */
+        .board{display:flex; gap:15px; overflow-x:auto; padding-bottom:10px;}
+        
+        /* Compact Columns */
+        .column{background:#252525; min-width:280px; border-radius:8px; padding:12px; border-top:3px solid #444;}
+        .column h3{font-size:14px; margin:0 0 12px 0; padding-bottom:8px; border-bottom:1px solid #3a3a3a; display:flex; justify-content:space-between; align-items:center;}
+        .count-badge{background:#444; padding:2px 8px; border-radius:15px; font-size:11px;}
+        
+        .column-reception{border-color:#3498db;}
+        .column-repair{border-color:#f1c40f;}
+        .column-pdi{border-color:#e67e22;}
+        .column-ready{border-color:#27ae60;}
+        
+        /* Compact Job Cards */
+        .job-card{background:#2d2d2d; padding:10px; border-radius:6px; margin-bottom:8px; border-left:3px solid #555; font-size:12px; transition:all 0.2s;}
+        .job-card:hover{background:#383838; transform:translateX(3px);}
+        .plate{font-size:14px; font-weight:bold; color:#fff; display:block;}
+        .core-tag{font-size:9px; padding:2px 5px; border-radius:3px; display:inline-block; margin-top:4px;}
+        .mech-name{font-size:10px; color:#aaa; margin-top:4px; display:block;}
+        .symptoms{font-size:10px; color:#777; margin-top:5px; font-style:italic; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+        .time-stamp{font-size:9px; color:#555; margin-top:4px;}
+        
+        .btn-back{text-decoration:none; color:#f1c40f; font-weight:bold; border:1px solid #f1c40f; padding:5px 15px; border-radius:5px; font-size:13px;}
+        .refresh-btn{background:#27ae60; color:white; border:none; padding:5px 15px; border-radius:5px; cursor:pointer; margin-left:10px; font-size:13px;}
+        
+        .empty-msg{text-align:center; padding:30px; color:#555; font-size:12px;}
+        
+        @media (max-width:1000px){
+            .board{flex-wrap:wrap;}
+            .column{flex:1; min-width:240px;}
+        }
     </style>
 </head><body>
 
-<div class="gm-header">
-    <button class="logout-btn" onclick="logout()">ອອກຈາກລະບົບ</button>
-    <h1 style="margin:0">ແຜງຄວບຄຸມ LSM</h1>
-    <p style="opacity:0.8">ຜູ້ຈັດການໃຫຍ່: <span id="gm-name-display">...</span></p>
-</div>
+<div class="container">
+    <div class="header">
+        <div>
+            <h1 style="font-size:22px; margin:0;">📊 ສະຖານະການສ້ອມແປງສົດ</h1>
+            <small style="color:#888; font-size:11px;">ອັບເດດອັດຕະໂນມັດທຸກ 30 ວິນາທີ</small>
+        </div>
+        <div>
+            <button class="refresh-btn" onclick="loadLiveView()">🔄 ຣີເຟຣດ</button>
+            <a href="gm-menu.html" class="btn-back">⬅️ ກັບຄືນ</a>
+        </div>
+    </div>
 
-<div class="menu-grid">
-    <a href="inventory-manager.html" class="menu-card" style="border-color:#27ae60">
-        <span id="low-stock-alert" class="stat-badge">0 ເຫຼືອໜ້ອຍ</span>
-        <span class="card-icon">📦</span>
-        <span class="card-title">ຈັດການສິນຄ້າຄັງ</span>
-        <p class="card-desc">ມູນຄ່າລວມ: <b id="total-inv-value">$0</b></p>
-    </a>
+    <!-- Quick Stats Bar -->
+    <div class="stats-bar">
+        <div class="stat-pill">📋 ລໍຖ້າ: <span id="count-queued">0</span></div>
+        <div class="stat-pill">🔧 ກຳລັງສ້ອມ: <span id="count-repair">0</span></div>
+        <div class="stat-pill">✅ ກຳລັງກວດ PDI: <span id="count-pdi">0</span></div>
+        <div class="stat-pill">🏁 ສຳເລັດສົ່ງລົດ: <span id="count-completed">0</span></div>
+    </div>
 
-    <a href="gm-live-view.html" class="menu-card" style="border-color:#f1c40f">
-        <span id="active-jobs-alert" class="stat-badge badge-green">0 ກຳລັງດຳເນີນ</span>
-        <span class="card-icon">🚕</span>
-        <span class="card-title">ສະຖານະການສ້ອມແປງສົດ</span>
-        <p class="card-desc">ເບິ່ງສະຖານະລົດທຸກຄັນໃນອູ່ຊ່ອມ</p>
-    </a>
+    <!-- Kanban Board -->
+    <div class="board">
+        <!-- ລໍຖ້າ / QUEUED -->
+        <div class="column column-reception">
+            <h3>
+                <span>📋 ລໍຖ້າ</span>
+                <span class="count-badge" id="badge-queued">0</span>
+            </h3>
+            <div id="col-QUEUED" class="jobs-container"></div>
+        </div>
 
-    <a href="staff-management.html" class="menu-card" style="border-color:#2980b9">
-        <span class="card-icon">👥</span>
-        <span class="card-title">ຈັດການພະນັກງານ</span>
-        <p class="card-desc">ຄຸ້ມຄອງສິດເຂົ້າໃຊ້ຂອງຊ່າງ 6 ຄົນ ແລະ ທີມ PDI 4 ຄົນ</p>
-    </a>
+        <!-- ກຳລັງສ້ອມແປງ / IN REPAIR -->
+        <div class="column column-repair">
+            <h3>
+                <span>🔧 ກຳລັງສ້ອມແປງ</span>
+                <span class="count-badge" id="badge-repair">0</span>
+            </h3>
+            <div id="col-IN_REPAIR" class="jobs-container"></div>
+        </div>
 
-    <a href="warehouse-parts.html" class="menu-card" style="border-color:#e67e22">
-        <span id="pending-parts-alert" class="stat-badge">0 ຄຳຂໍ</span>
-        <span class="card-icon">🔩</span>
-        <span class="card-title">ຕິດຕາມຄັງເກັບສິນຄ້າ</span>
-        <p class="card-desc">ກວດສອບການເບີກຈ່າຍອາໄຫຼ່ໃຫ້ຊ່າງ</p>
-    </a>
+        <!-- PDI ກວດ / PDI INSPECTION -->
+        <div class="column column-pdi">
+            <h3>
+                <span>✅ PDI ກວດ</span>
+                <span class="count-badge" id="badge-pdi">0</span>
+            </h3>
+            <div id="col-PDI" class="jobs-container"></div>
+        </div>
 
-    <a href="profit-loss.html" class="menu-card" style="border-color:#e74c3c">
-        <span class="card-icon">📊</span>
-        <span class="card-title">ລາຍງານກຳໄລ-ຂາດທຶນ</span>
-        <p class="card-desc">ວິເຄາະລາຍຮັບ ຄ່າໃຊ້ຈ່າຍ ແລະ ກຳໄລສຸດທິ</p>
-    </a>
-
-    <a href="revenue-report.html" class="menu-card" style="border-color:#3498db">
-        <span class="card-icon">💰</span>
-        <span class="card-title">ລາຍງານລາຍຮັບ</span>
-        <p class="card-desc">ລາຍງານລາຍຮັບຈາກຄ່າແຮງງານ ແລະ ອາໄຫຼ່</p>
-    </a>
+        <!-- ສຳເລັດ ສົ່ງລົດ / COMPLETED -->
+        <div class="column column-ready">
+            <h3>
+                <span>🏁 ສຳເລັດ ສົ່ງລົດ</span>
+                <span class="count-badge" id="badge-completed">0</span>
+            </h3>
+            <div id="col-COMPLETED" class="jobs-container"></div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -71,43 +109,84 @@
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
     const _s = supabase.createClient(u, k);
 
-    // Fix: Use the correct key name 'lsm_user_role' instead of 'lsm_role'
-if(localStorage.getItem('lsm_user_role') !== 'GM') window.location.href = 'index.html';
-document.getElementById('gm-name-display').innerText = localStorage.getItem('lsm_user_name');
-
-    async function loadLiveStats() {
-        const { data: inv } = await _s.from('inventory').select('stock_quantity, unit_price');
-        if(inv) {
-            const lowItems = inv.filter(i => i.stock_quantity < 5).length;
-            const totalVal = inv.reduce((acc, curr) => acc + (curr.stock_quantity * curr.unit_price), 0);
-            
-            if(lowItems > 0) {
-                document.getElementById('low-stock-alert').innerText = lowItems + " ເຫຼືອໜ້ອຍ";
-                document.getElementById('low-stock-alert').style.display = 'block';
-            }
-            document.getElementById('total-inv-value').innerText = "$" + totalVal.toLocaleString();
-        }
-
-        const { count: jobCount } = await _s.from('job_cards')
-            .select('*', { count: 'exact', head: true }).eq('current_status', 'IN_REPAIR');
+    async function loadLiveView() {
+        const { data: jobs, error } = await _s.from('job_cards')
+            .select('*')
+            .order('created_at', { ascending: false });
         
-        if(jobCount > 0) {
-            document.getElementById('active-jobs-alert').innerText = jobCount + " ກຳລັງດຳເນີນ";
-            document.getElementById('active-jobs-alert').style.display = 'block';
+        if(error) {
+            console.error("Error:", error);
+            return;
+        }
+        
+        // Clear containers
+        const containers = {
+            QUEUED: document.getElementById('col-QUEUED'),
+            IN_REPAIR: document.getElementById('col-IN_REPAIR'),
+            PDI: document.getElementById('col-PDI'),
+            COMPLETED: document.getElementById('col-COMPLETED')
+        };
+        
+        Object.values(containers).forEach(c => {
+            if(c) c.innerHTML = "";
+        });
+        
+        if(!jobs || jobs.length === 0) {
+            const emptyMsg = "<div class='empty-msg'>ບໍ່ມີຂໍ້ມູນວຽກ</div>";
+            Object.values(containers).forEach(c => {
+                if(c) c.innerHTML = emptyMsg;
+            });
+            return;
         }
 
-        const { count: reqCount } = await _s.from('part_requests')
-            .select('*', { count: 'exact', head: true }).eq('status', 'PENDING');
+        let counts = { QUEUED: 0, IN_REPAIR: 0, PDI: 0, COMPLETED: 0 };
 
-        if(reqCount > 0) {
-            document.getElementById('pending-parts-alert').innerText = reqCount + " ຄຳຂໍໃໝ່";
-            document.getElementById('pending-parts-alert').style.display = 'block';
-        }
+        jobs.forEach(job => {
+            let status = job.current_status;
+            // Map FINISHED to COMPLETED for display
+            if(status === 'FINISHED') status = 'COMPLETED';
+            
+            const container = containers[status];
+            if(container) {
+                counts[status] = (counts[status] || 0) + 1;
+                
+                const card = document.createElement('div');
+                card.className = 'job-card';
+                
+                // Core type styling
+                const coreColor = job.core_type == 1 ? '#3498db' : (job.core_type == 2 ? '#f1c40f' : '#e74c3c');
+                const coreText = job.core_type == 1 ? 'ແກນ 1' : (job.core_type == 2 ? 'ແກນ 2' : 'ແກນ 3');
+                
+                // Shorten symptoms if too long
+                let symptoms = job.symptoms || 'ບໍ່ມີ';
+                if(symptoms.length > 40) symptoms = symptoms.substring(0, 37) + '...';
+                
+                card.innerHTML = `
+                    <span class="plate">🚕 ${job.vehicle_plate}</span>
+                    <span class="core-tag" style="background:${coreColor}; color:${job.core_type == 2 ? '#000' : '#fff'}">${coreText}</span>
+                    <span class="mech-name">👤 ${job.assigned_mechanic_id || 'ຍັງບໍ່ໄດ້ມອບ'}</span>
+                    <div class="symptoms">📝 ${symptoms}</div>
+                    <div class="time-stamp">🕐 ${job.arrival_time ? new Date(job.arrival_time).toLocaleTimeString('lo-LA', {hour:'2-digit', minute:'2-digit'}) : '-'}</div>
+                `;
+                container.appendChild(card);
+            }
+        });
+        
+        // Update badges and stats
+        document.getElementById('count-queued').innerText = counts.QUEUED || 0;
+        document.getElementById('count-repair').innerText = counts.IN_REPAIR || 0;
+        document.getElementById('count-pdi').innerText = counts.PDI || 0;
+        document.getElementById('count-completed').innerText = counts.COMPLETED || 0;
+        
+        document.getElementById('badge-queued').innerText = counts.QUEUED || 0;
+        document.getElementById('badge-repair').innerText = counts.IN_REPAIR || 0;
+        document.getElementById('badge-pdi').innerText = counts.PDI || 0;
+        document.getElementById('badge-completed').innerText = counts.COMPLETED || 0;
     }
 
-    function logout() { localStorage.clear(); window.location.href = 'index.html'; }
-
-    loadLiveStats();
-    setInterval(loadLiveStats, 30000);
+    // Initial load
+    loadLiveView();
+    // Auto-refresh every 30 seconds
+    setInterval(loadLiveView, 30000);
 </script>
 </body></html>

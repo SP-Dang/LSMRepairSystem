@@ -4,87 +4,88 @@
     <meta charset="UTF-8"><title>LSM - ສະຖານະການສ້ອມແປງສົດ</title>
     <style>
         *{box-sizing:border-box;}
-        body{font-family:'Segoe UI','Phetsarath OT',sans-serif; background:#1a1a1a; color:#eee; margin:0; padding:20px;}
+        body{font-family:'Segoe UI','Phetsarath OT',sans-serif; background:#1a1a1a; color:#eee; margin:0; padding:15px;}
         .container{max-width:100%; margin:0 auto;}
         
         /* Header */
-        .header{display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:2px solid #333; padding-bottom:15px; flex-wrap:wrap; gap:10px;}
+        .header{display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:2px solid #333; padding-bottom:10px; flex-wrap:wrap; gap:10px;}
+        .header h1{font-size:18px; margin:0;}
         
-        /* Quick Stats Bar */
-        .stats-bar{display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap;}
-        .stat-pill{background:#2a2a2a; padding:8px 16px; border-radius:25px; font-size:13px; cursor:pointer; transition:all 0.2s;}
-        .stat-pill:hover{background:#3a3a3a; transform:translateY(-2px);}
-        .stat-pill span{color:#f1c40f; font-weight:bold; font-size:16px;}
-        .stat-pill.active{background:#f1c40f; color:#1a1a1a;}
-        .stat-pill.active span{color:#1a1a1a;}
+        /* Quick Stats Bar - More Compact */
+        .stats-bar{display:flex; gap:8px; margin-bottom:15px; flex-wrap:wrap;}
+        .stat-pill{background:#2a2a2a; padding:5px 12px; border-radius:20px; font-size:11px; cursor:pointer; transition:all 0.2s;}
+        .stat-pill span{color:#f1c40f; font-weight:bold; font-size:13px;}
         
-        /* Toolbar */
-        .toolbar{display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; align-items:center;}
-        .search-box{flex:1; min-width:200px; padding:10px 15px; border-radius:8px; border:1px solid #444; background:#2a2a2a; color:white; font-size:14px;}
-        .search-box:focus{outline:none; border-color:#f1c40f;}
-        .filter-select{padding:10px 15px; border-radius:8px; border:1px solid #444; background:#2a2a2a; color:white;}
-        .view-toggle{display:flex; gap:5px;}
-        .view-btn{padding:8px 15px; background:#2a2a2a; border:none; border-radius:6px; color:#aaa; cursor:pointer;}
+        /* Toolbar - Compact */
+        .toolbar{display:flex; gap:8px; margin-bottom:15px; flex-wrap:wrap; align-items:center;}
+        .search-box{flex:1; min-width:150px; padding:6px 10px; border-radius:6px; border:1px solid #444; background:#2a2a2a; color:white; font-size:12px;}
+        .filter-select{padding:6px 10px; border-radius:6px; border:1px solid #444; background:#2a2a2a; color:white; font-size:12px;}
+        .view-btn{padding:6px 12px; background:#2a2a2a; border:none; border-radius:5px; color:#aaa; cursor:pointer; font-size:11px;}
         .view-btn.active{background:#f1c40f; color:#1a1a1a;}
         
-        /* Board Layout - Scrollable */
-        .board{display:flex; gap:15px; overflow-x:auto; padding-bottom:10px; min-height:500px;}
+        /* Board Layout - Compact Columns */
+        .board{display:flex; gap:10px; overflow-x:auto; padding-bottom:8px; min-height:450px;}
         
-        /* Columns - Fixed width, scrollable content */
-        .column{background:#252525; min-width:300px; width:320px; border-radius:10px; display:flex; flex-direction:column; max-height:calc(100vh - 250px);}
-        .column-header{background:#1f1f1f; padding:12px; border-radius:10px 10px 0 0; border-bottom:1px solid #3a3a3a; cursor:pointer; user-select:none;}
-        .column-header h3{margin:0; font-size:14px; display:flex; justify-content:space-between; align-items:center;}
-        .count-badge{background:#f1c40f; color:#1a1a1a; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:bold;}
-        .collapse-icon{font-size:12px; color:#888;}
+        /* Columns - Narrower width */
+        .column{background:#252525; min-width:240px; width:250px; border-radius:8px; display:flex; flex-direction:column; max-height:calc(100vh - 180px);}
+        .column-header{background:#1f1f1f; padding:8px 10px; border-radius:8px 8px 0 0; border-bottom:1px solid #3a3a3a; cursor:pointer;}
+        .column-header h3{margin:0; font-size:12px; display:flex; justify-content:space-between; align-items:center;}
+        .count-badge{background:#f1c40f; color:#1a1a1a; padding:1px 6px; border-radius:15px; font-size:10px; font-weight:bold;}
+        .collapse-icon{font-size:10px; color:#888;}
         
         /* Scrollable job list */
-        .jobs-container{flex:1; overflow-y:auto; padding:10px; min-height:200px; max-height:calc(100vh - 320px);}
+        .jobs-container{flex:1; overflow-y:auto; padding:6px; min-height:200px; max-height:calc(100vh - 250px);}
         
-        /* Compact Job Cards - Clickable */
-        .job-card{background:#2d2d2d; padding:10px 12px; border-radius:8px; margin-bottom:8px; border-left:3px solid; cursor:pointer; transition:all 0.2s; position:relative;}
-        .job-card:hover{background:#3a3a3a; transform:translateX(3px);}
-        .job-card:active{transform:scale(0.99);}
+        /* ULTRA COMPACT Job Cards */
+        .job-card{background:#2d2d2d; padding:6px 8px; border-radius:5px; margin-bottom:5px; border-left:3px solid; cursor:pointer; transition:all 0.15s; position:relative;}
+        .job-card:hover{background:#3a3a3a; transform:translateX(2px);}
         
-        .plate{font-size:13px; font-weight:bold; color:#fff; display:block;}
-        .core-tag{font-size:8px; padding:2px 6px; border-radius:4px; display:inline-block; margin-top:5px;}
-        .mech-name{font-size:10px; color:#aaa; margin-top:5px; display:flex; align-items:center; gap:5px;}
-        .symptoms{font-size:9px; color:#777; margin-top:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-        .time-stamp{font-size:9px; color:#555; margin-top:5px;}
-        .status-icon{font-size:16px; position:absolute; right:10px; top:10px;}
+        .plate{font-size:11px; font-weight:bold; color:#fff; display:block; margin-bottom:2px;}
+        .core-tag{font-size:7px; padding:1px 4px; border-radius:3px; display:inline-block; margin-top:2px;}
+        .mech-name{font-size:9px; color:#aaa; margin-top:3px; display:flex; align-items:center; gap:3px;}
+        .symptoms{font-size:8px; color:#777; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+        .time-stamp{font-size:7px; color:#555; margin-top:3px;}
+        .status-icon{font-size:12px; position:absolute; right:6px; top:6px;}
         
-        /* Modal Styles */
-        .modal{display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; justify-content:center; align-items:center;}
-        .modal-content{background:#2d2d2d; border-radius:15px; width:90%; max-width:500px; max-height:80vh; overflow-y:auto; animation:modalIn 0.3s ease;}
-        @keyframes modalIn{from{opacity:0; transform:translateY(-50px);}to{opacity:1; transform:translateY(0);}}
-        .modal-header{padding:20px; border-bottom:1px solid #444; display:flex; justify-content:space-between; align-items:center;}
-        .modal-header h3{margin:0; color:#f1c40f;}
-        .close-modal{background:none; border:none; color:#aaa; font-size:24px; cursor:pointer;}
-        .close-modal:hover{color:#fff;}
-        .modal-body{padding:20px;}
-        .detail-row{display:flex; margin-bottom:12px; padding:8px 0; border-bottom:1px solid #3a3a3a;}
-        .detail-label{width:120px; font-weight:bold; color:#f1c40f; font-size:12px;}
-        .detail-value{flex:1; color:#ddd; font-size:13px; word-break:break-word;}
-        .parts-list{background:#1f1f1f; border-radius:8px; margin-top:10px;}
-        .part-item{padding:8px 12px; border-bottom:1px solid #333; font-size:12px; display:flex; justify-content:space-between;}
-        .status-badge{padding:2px 8px; border-radius:12px; font-size:10px; font-weight:bold;}
-        .status-issued{background:#27ae60; color:white;}
-        .status-pending{background:#f1c40f; color:#1a1a1a;}
-        .status-rejected{background:#e74c3c; color:white;}
+        /* One-line card alternative (even more compact) */
+        .job-card-compact{background:#2d2d2d; padding:5px 8px; border-radius:4px; margin-bottom:3px; border-left:2px solid; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:5px;}
+        .job-card-compact .info{flex:1; overflow:hidden;}
+        .job-card-compact .plate{font-size:10px; font-weight:bold; white-space:nowrap;}
+        .job-card-compact .mech-name{font-size:8px; color:#aaa; margin-top:0;}
+        .job-card-compact .status-icon{position:static; font-size:11px;}
         
-        .btn-back{text-decoration:none; color:#f1c40f; font-weight:bold; border:1px solid #f1c40f; padding:5px 15px; border-radius:5px; font-size:13px;}
-        .refresh-btn{background:#27ae60; color:white; border:none; padding:5px 15px; border-radius:5px; cursor:pointer; margin-left:10px; font-size:13px;}
+        .btn-back{text-decoration:none; color:#f1c40f; font-weight:bold; border:1px solid #f1c40f; padding:4px 12px; border-radius:5px; font-size:11px;}
+        .refresh-btn{background:#27ae60; color:white; border:none; padding:4px 12px; border-radius:5px; cursor:pointer; margin-left:8px; font-size:11px;}
         
-        .empty-msg{text-align:center; padding:40px; color:#555; font-size:13px;}
+        .empty-msg{text-align:center; padding:30px 10px; color:#555; font-size:11px;}
         
         /* Pagination */
-        .pagination{display:flex; justify-content:center; gap:8px; margin-top:20px; flex-wrap:wrap;}
-        .page-btn{padding:6px 12px; background:#2a2a2a; border:none; border-radius:5px; color:#aaa; cursor:pointer; font-size:12px;}
+        .pagination{display:flex; justify-content:center; gap:5px; margin-top:15px; flex-wrap:wrap;}
+        .page-btn{padding:4px 10px; background:#2a2a2a; border:none; border-radius:4px; color:#aaa; cursor:pointer; font-size:11px;}
         .page-btn.active{background:#f1c40f; color:#1a1a1a;}
-        .page-btn:hover:not(.active){background:#3a3a3a;}
+        
+        /* Modal */
+        .modal{display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; justify-content:center; align-items:center;}
+        .modal-content{background:#2d2d2d; border-radius:12px; width:90%; max-width:450px; max-height:80vh; overflow-y:auto;}
+        .modal-header{padding:15px; border-bottom:1px solid #444; display:flex; justify-content:space-between; align-items:center;}
+        .modal-header h3{margin:0; font-size:16px; color:#f1c40f;}
+        .close-modal{background:none; border:none; color:#aaa; font-size:20px; cursor:pointer;}
+        .modal-body{padding:15px;}
+        .detail-row{display:flex; margin-bottom:8px; padding:5px 0; border-bottom:1px solid #3a3a3a;}
+        .detail-label{width:100px; font-weight:bold; color:#f1c40f; font-size:11px;}
+        .detail-value{flex:1; color:#ddd; font-size:11px; word-break:break-word;}
+        
+        /* Compact mode toggle */
+        .compact-toggle{display:flex; align-items:center; gap:5px; margin-left:10px;}
+        .compact-toggle label{font-size:10px; color:#aaa; cursor:pointer;}
+        
+        /* List view compact */
+        #list-view table{font-size:11px;}
+        #list-view th, #list-view td{padding:8px 6px;}
         
         @media (max-width:768px){
-            .column{min-width:280px; width:280px;}
-            .detail-label{width:100px; font-size:11px;}
+            .column{min-width:220px; width:230px;}
+            .detail-label{width:80px;}
         }
     </style>
 </head><body>
@@ -92,8 +93,8 @@
 <div class="container">
     <div class="header">
         <div>
-            <h1 style="font-size:22px; margin:0;">📊 ສະຖານະການສ້ອມແປງສົດ</h1>
-            <small style="color:#888; font-size:11px;">ກົດທີ່ບັດເພື່ອເບິ່ງລາຍລະອຽດ | ອັບເດດອັດຕະໂນມັດທຸກ 30 ວິນາທີ</small>
+            <h1>📊 ສະຖານະການສ້ອມແປງສົດ</h1>
+            <small style="color:#888; font-size:9px;">ກົດທີ່ບັດເພື່ອເບິ່ງລາຍລະອຽດ</small>
         </div>
         <div>
             <button class="refresh-btn" onclick="loadAllData()">🔄 ຣີເຟຣດ</button>
@@ -101,18 +102,18 @@
         </div>
     </div>
 
-    <!-- Quick Stats (Clickable Filters) -->
+    <!-- Quick Stats -->
     <div class="stats-bar">
         <div class="stat-pill" data-status="all" onclick="filterByStatus('all')">📊 ທັງໝົດ: <span id="total-all">0</span></div>
         <div class="stat-pill" data-status="QUEUED" onclick="filterByStatus('QUEUED')">📋 ລໍຖ້າ: <span id="total-queued">0</span></div>
         <div class="stat-pill" data-status="IN_REPAIR" onclick="filterByStatus('IN_REPAIR')">🔧 ກຳລັງສ້ອມ: <span id="total-repair">0</span></div>
-        <div class="stat-pill" data-status="PDI" onclick="filterByStatus('PDI')">✅ PDI ກວດ: <span id="total-pdi">0</span></div>
+        <div class="stat-pill" data-status="PDI" onclick="filterByStatus('PDI')">✅ PDI: <span id="total-pdi">0</span></div>
         <div class="stat-pill" data-status="COMPLETED" onclick="filterByStatus('COMPLETED')">🏁 ສຳເລັດ: <span id="total-completed">0</span></div>
     </div>
 
     <!-- Toolbar -->
     <div class="toolbar">
-        <input type="text" id="search-input" class="search-box" placeholder="🔍 ຄົ້ນຫາທະບຽນລົດ ຫຼື ຊ່າງ...">
+        <input type="text" id="search-input" class="search-box" placeholder="🔍 ຄົ້ນຫາ...">
         <select id="core-filter" class="filter-select">
             <option value="all">ທຸກແກນ</option>
             <option value="1">ແກນ 1</option>
@@ -120,56 +121,59 @@
             <option value="3">ແກນ 3</option>
         </select>
         <div class="view-toggle">
-            <button class="view-btn active" onclick="setViewMode('kanban')">📋 ແບບແຖວ</button>
-            <button class="view-btn" onclick="setViewMode('list')">📝 ແບບລາຍການ</button>
+            <button class="view-btn active" onclick="setViewMode('kanban')">📋 ແຖວ</button>
+            <button class="view-btn" onclick="setViewMode('list')">📝 ລາຍການ</button>
+        </div>
+        <div class="compact-toggle">
+            <input type="checkbox" id="compact-mode" onchange="toggleCompactMode()">
+            <label for="compact-mode">📦 ແບບກະທັດຮັດ</label>
         </div>
     </div>
 
     <!-- Kanban Board View -->
     <div id="kanban-view" class="board">
-        <div class="column column-queued" data-status="QUEUED">
+        <div class="column" data-status="QUEUED">
             <div class="column-header" onclick="toggleColumn(this)">
                 <h3><span>📋 ລໍຖ້າ</span><span class="count-badge" id="badge-queued">0</span></h3>
                 <div class="collapse-icon">▼</div>
             </div>
             <div class="jobs-container" id="col-QUEUED"></div>
         </div>
-        <div class="column column-repair" data-status="IN_REPAIR">
+        <div class="column" data-status="IN_REPAIR">
             <div class="column-header" onclick="toggleColumn(this)">
-                <h3><span>🔧 ກຳລັງສ້ອມແປງ</span><span class="count-badge" id="badge-repair">0</span></h3>
+                <h3><span>🔧 ກຳລັງສ້ອມ</span><span class="count-badge" id="badge-repair">0</span></h3>
                 <div class="collapse-icon">▼</div>
             </div>
             <div class="jobs-container" id="col-IN_REPAIR"></div>
         </div>
-        <div class="column column-pdi" data-status="PDI">
+        <div class="column" data-status="PDI">
             <div class="column-header" onclick="toggleColumn(this)">
                 <h3><span>✅ PDI ກວດ</span><span class="count-badge" id="badge-pdi">0</span></h3>
                 <div class="collapse-icon">▼</div>
             </div>
             <div class="jobs-container" id="col-PDI"></div>
         </div>
-        <div class="column column-completed" data-status="COMPLETED">
+        <div class="column" data-status="COMPLETED">
             <div class="column-header" onclick="toggleColumn(this)">
-                <h3><span>🏁 ສຳເລັດ ສົ່ງລົດ</span><span class="count-badge" id="badge-completed">0</span></h3>
+                <h3><span>🏁 ສຳເລັດ</span><span class="count-badge" id="badge-completed">0</span></h3>
                 <div class="collapse-icon">▼</div>
             </div>
             <div class="jobs-container" id="col-COMPLETED"></div>
         </div>
     </div>
 
-    <!-- List View (Alternative for better space efficiency) -->
+    <!-- List View -->
     <div id="list-view" style="display:none;">
-        <div style="background:#252525; border-radius:10px; overflow-x:auto;">
-            <table style="width:100%; border-collapse:collapse;">
+        <div style="background:#252525; border-radius:8px; overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; font-size:11px;">
                 <thead>
-                    <tr style="background:#1f1f1f; border-bottom:2px solid #f1c40f;">
-                        <th style="padding:12px; text-align:left;">ທະບຽນ</th>
-                        <th style="padding:12px; text-align:left;">ແກນ</th>
-                        <th style="padding:12px; text-align:left;">ສະຖານະ</th>
-                        <th style="padding:12px; text-align:left;">ຊ່າງ</th>
-                        <th style="padding:12px; text-align:left;">ອາການ</th>
-                        <th style="padding:12px; text-align:left;">ເວລາມາ</th>
-                        <th style="padding:12px; text-align:center;">ລາຍລະອຽດ</th>
+                    <tr style="background:#1f1f1f;">
+                        <th style="padding:8px; text-align:left;">ທະບຽນ</th>
+                        <th style="padding:8px; text-align:left;">ແກນ</th>
+                        <th style="padding:8px; text-align:left;">ສະຖານະ</th>
+                        <th style="padding:8px; text-align:left;">ຊ່າງ</th>
+                        <th style="padding:8px; text-align:left;">ເວລາ</th>
+                        <th style="padding:8px; text-align:center;">ລາຍລະອຽດ</th>
                     </tr>
                 </thead>
                 <tbody id="list-view-body"></tbody>
@@ -181,16 +185,14 @@
     <div class="pagination" id="pagination"></div>
 </div>
 
-<!-- Modal for Job Details -->
+<!-- Modal -->
 <div id="job-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h3 id="modal-title">ລາຍລະອຽດວຽກ</h3>
+            <h3>ລາຍລະອຽດວຽກ</h3>
             <button class="close-modal" onclick="closeModal()">&times;</button>
         </div>
-        <div class="modal-body" id="modal-body">
-            <div style="text-align:center; padding:20px;">ກຳລັງໂຫຼດ...</div>
-        </div>
+        <div class="modal-body" id="modal-body">ກຳລັງໂຫຼດ...</div>
     </div>
 </div>
 
@@ -204,22 +206,17 @@
     let currentSearchTerm = '';
     let currentCoreFilter = 'all';
     let viewMode = 'kanban';
+    let compactMode = false;
     let currentPage = 1;
-    const itemsPerPage = 20;
+    const itemsPerPage = 30;
 
     async function loadAllData() {
-        console.log("Loading all jobs...");
         const { data, error } = await _s.from('job_cards')
             .select('*')
             .order('arrival_time', { ascending: false });
         
-        if(error) {
-            console.error("Error:", error);
-            return;
-        }
-        
+        if(error) { console.error(error); return; }
         allJobs = data || [];
-        console.log(`Loaded ${allJobs.length} jobs`);
         updateStats();
         applyFiltersAndRender();
     }
@@ -248,7 +245,6 @@
     function getFilteredJobs() {
         let filtered = [...allJobs];
         
-        // Status filter
         if(currentStatusFilter !== 'all') {
             if(currentStatusFilter === 'COMPLETED') {
                 filtered = filtered.filter(j => j.current_status === 'COMPLETED' || j.current_status === 'FINISHED');
@@ -257,17 +253,14 @@
             }
         }
         
-        // Search filter
         if(currentSearchTerm) {
             const term = currentSearchTerm.toLowerCase();
             filtered = filtered.filter(j => 
                 j.vehicle_plate.toLowerCase().includes(term) ||
-                (j.assigned_mechanic_id && j.assigned_mechanic_id.toLowerCase().includes(term)) ||
-                (j.symptoms && j.symptoms.toLowerCase().includes(term))
+                (j.assigned_mechanic_id && j.assigned_mechanic_id.toLowerCase().includes(term))
             );
         }
         
-        // Core filter
         if(currentCoreFilter !== 'all') {
             filtered = filtered.filter(j => j.core_type == currentCoreFilter);
         }
@@ -313,20 +306,20 @@
             
             const container = containers[displayStatus];
             if(container) {
-                const card = createJobCard(job);
+                const card = compactMode ? createCompactCard(job) : createJobCard(job);
                 container.appendChild(card);
             }
         });
         
-        // Show empty messages for columns with no jobs in this filtered view
+        // Empty messages for empty columns
         Object.keys(containers).forEach(status => {
             const hasJobs = jobs.some(j => {
                 let s = j.current_status;
                 if(s === 'FINISHED') s = 'COMPLETED';
                 return s === status;
             });
-            if(!hasJobs && containers[status]) {
-                containers[status].innerHTML = "<div class='empty-msg'>📭 ບໍ່ມີວຽກ</div>";
+            if(!hasJobs && containers[status] && containers[status].children.length === 0) {
+                containers[status].innerHTML = "<div class='empty-msg'>📭 ບໍ່ມີ</div>";
             }
         });
     }
@@ -336,7 +329,7 @@
         card.className = 'job-card';
         
         const coreColor = job.core_type == 1 ? '#3498db' : (job.core_type == 2 ? '#f1c40f' : '#e74c3c');
-        const coreText = job.core_type == 1 ? 'ແກນ 1' : (job.core_type == 2 ? 'ແກນ 2' : 'ແກນ 3');
+        const coreText = job.core_type == 1 ? 'C1' : (job.core_type == 2 ? 'C2' : 'C3');
         const coreTextColor = job.core_type == 2 ? '#000' : '#fff';
         
         let timeStr = '-';
@@ -344,7 +337,7 @@
             try {
                 const date = new Date(job.arrival_time);
                 if(!isNaN(date.getTime())) {
-                    timeStr = date.toLocaleTimeString('lo-LA', {hour:'2-digit', minute:'2-digit'});
+                    timeStr = date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
                 }
             } catch(e) {}
         }
@@ -356,11 +349,33 @@
             <span class="status-icon">${statusIcons[job.current_status] || '📋'}</span>
             <span class="plate">🚕 ${job.vehicle_plate}</span>
             <span class="core-tag" style="background:${coreColor}; color:${coreTextColor}">${coreText}</span>
-            <div class="mech-name">👤 ${job.assigned_mechanic_id || 'ຍັງບໍ່ໄດ້ມອບ'}</div>
-            <div class="symptoms">📝 ${(job.symptoms || 'ບໍ່ມີ').substring(0, 35)}${(job.symptoms || '').length > 35 ? '...' : ''}</div>
+            <div class="mech-name">👤 ${(job.assigned_mechanic_id || '-').substring(0, 12)}</div>
+            <div class="symptoms">📝 ${(job.symptoms || '-').substring(0, 25)}${(job.symptoms || '').length > 25 ? '..' : ''}</div>
             <div class="time-stamp">🕐 ${timeStr}</div>
         `;
+        card.onclick = () => showJobDetails(job.id);
+        return card;
+    }
+
+    function createCompactCard(job) {
+        const card = document.createElement('div');
+        card.className = 'job-card-compact';
         
+        const coreColor = job.core_type == 1 ? '#3498db' : (job.core_type == 2 ? '#f1c40f' : '#e74c3c');
+        const coreText = job.core_type == 1 ? 'C1' : (job.core_type == 2 ? 'C2' : 'C3');
+        const coreTextColor = job.core_type == 2 ? '#000' : '#fff';
+        
+        const statusIcons = { 'QUEUED': '⏳', 'IN_REPAIR': '🔧', 'PDI': '✅', 'COMPLETED': '🏁', 'FINISHED': '🏁' };
+        
+        card.style.borderLeftColor = coreColor;
+        card.innerHTML = `
+            <span class="status-icon">${statusIcons[job.current_status] || '📋'}</span>
+            <div class="info">
+                <div class="plate">🚕 ${job.vehicle_plate}</div>
+                <div class="mech-name">👤 ${(job.assigned_mechanic_id || '-').substring(0, 10)}</div>
+            </div>
+            <span class="core-tag" style="background:${coreColor}; color:${coreTextColor}">${coreText}</span>
+        `;
         card.onclick = () => showJobDetails(job.id);
         return card;
     }
@@ -370,7 +385,7 @@
         tbody.innerHTML = '';
         
         if(jobs.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px;">ບໍ່ມີຂໍ້ມູນ</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px;">ບໍ່ມີຂໍ້ມູນ</td></tr>';
             return;
         }
         
@@ -388,19 +403,18 @@
                 try {
                     const date = new Date(job.arrival_time);
                     if(!isNaN(date.getTime())) {
-                        timeStr = date.toLocaleDateString('lo-LA') + ' ' + date.toLocaleTimeString('lo-LA', {hour:'2-digit', minute:'2-digit'});
+                        timeStr = date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
                     }
                 } catch(e) {}
             }
             
             row.innerHTML = `
-                <td style="padding:12px; font-weight:bold;">🚕 ${job.vehicle_plate}</td>
-                <td style="padding:12px;"><span style="background:${coreColor}; padding:2px 8px; border-radius:12px; font-size:11px; color:${job.core_type==2?'#000':'#fff'}">${coreText}</span></td>
-                <td style="padding:12px;">${job.current_status}</td>
-                <td style="padding:12px;">${job.assigned_mechanic_id || '-'}</td>
-                <td style="padding:12px; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${job.symptoms || '-'}</td>
-                <td style="padding:12px; font-size:11px;">${timeStr}</td>
-                <td style="padding:12px; text-align:center;"><button style="background:#f1c40f; border:none; padding:4px 12px; border-radius:5px; cursor:pointer;">👁️ ເບິ່ງ</button></td>
+                <td style="padding:6px; font-weight:bold;">🚕 ${job.vehicle_plate}</td>
+                <td style="padding:6px;"><span style="background:${coreColor}; padding:1px 6px; border-radius:10px; font-size:9px;">${coreText}</span></td>
+                <td style="padding:6px; font-size:10px;">${job.current_status}</td>
+                <td style="padding:6px; font-size:10px;">${job.assigned_mechanic_id || '-'}</td>
+                <td style="padding:6px; font-size:10px;">${timeStr}</td>
+                <td style="padding:6px; text-align:center;"><button style="background:#f1c40f; border:none; padding:2px 10px; border-radius:4px; cursor:pointer; font-size:10px;">👁️</button></td>
             `;
             tbody.appendChild(row);
         });
@@ -409,18 +423,13 @@
     function renderPagination(totalPages) {
         const paginationDiv = document.getElementById('pagination');
         paginationDiv.innerHTML = '';
-        
         if(totalPages <= 1) return;
         
-        for(let i = 1; i <= Math.min(totalPages, 10); i++) {
+        for(let i = 1; i <= Math.min(totalPages, 8); i++) {
             const btn = document.createElement('button');
             btn.innerText = i;
             btn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
-            btn.onclick = () => {
-                currentPage = i;
-                applyFiltersAndRender();
-                document.querySelector('.board')?.scrollIntoView({ behavior: 'smooth' });
-            };
+            btn.onclick = () => { currentPage = i; applyFiltersAndRender(); };
             paginationDiv.appendChild(btn);
         }
     }
@@ -429,98 +438,48 @@
         const { data: job } = await _s.from('job_cards').select('*').eq('id', jobId).single();
         if(!job) return;
         
-        const { data: parts } = await _s.from('part_requests')
-            .select('*')
-            .eq('job_id', jobId);
+        const { data: parts } = await _s.from('part_requests').select('*').eq('job_id', jobId);
         
-        const modalBody = document.getElementById('modal-body');
         const coreColor = job.core_type == 1 ? '#3498db' : (job.core_type == 2 ? '#f1c40f' : '#e74c3c');
         
-        let partsHtml = '<div class="parts-list">';
+        let partsHtml = '<div style="background:#1f1f1f; border-radius:6px; margin-top:8px;">';
         if(parts && parts.length > 0) {
             parts.forEach(p => {
-                let statusClass = '';
-                let statusText = '';
-                if(p.status === 'ISSUED') { statusClass = 'status-issued'; statusText = 'ເບີກແລ້ວ'; }
-                else if(p.status === 'PENDING') { statusClass = 'status-pending'; statusText = 'ລໍຖ້າ'; }
-                else { statusClass = 'status-rejected'; statusText = 'ປະຕິເສດ'; }
-                
-                partsHtml += `
-                    <div class="part-item">
-                        <span>${p.quantity}x ${p.part_name}</span>
-                        <span class="status-badge ${statusClass}">${statusText}</span>
-                    </div>`;
+                partsHtml += `<div style="padding:6px 8px; border-bottom:1px solid #333; font-size:10px; display:flex; justify-content:space-between;">
+                    <span>${p.quantity}x ${p.part_name}</span>
+                    <span style="color:#f1c40f;">${p.status}</span>
+                </div>`;
             });
         } else {
-            partsHtml += '<div class="part-item" style="color:#888;">ບໍ່ມີການຂໍອາໄຫຼ່</div>';
+            partsHtml += '<div style="padding:8px; color:#888; font-size:10px;">ບໍ່ມີອາໄຫຼ່</div>';
         }
         partsHtml += '</div>';
         
-        modalBody.innerHTML = `
-            <div class="detail-row">
-                <div class="detail-label">ເລກວຽກ:</div>
-                <div class="detail-value">#${job.id}</div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">ທະບຽນລົດ:</div>
-                <div class="detail-value">🚕 ${job.vehicle_plate}</div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">ແກນ:</div>
-                <div class="detail-value"><span style="background:${coreColor}; padding:3px 10px; border-radius:12px; font-size:11px;">ແກນ ${job.core_type}</span></div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">ສະຖານະ:</div>
-                <div class="detail-value">${job.current_status}</div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">ຊ່າງ:</div>
-                <div class="detail-value">${job.assigned_mechanic_id || 'ຍັງບໍ່ໄດ້ມອບ'}</div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">ອາການ:</div>
-                <div class="detail-value">${job.symptoms || 'ບໍ່ມີ'}</div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">ຄ່າແຮງງານ:</div>
-                <div class="detail-value">$${(job.labor_fee || 0).toFixed(2)}</div>
-            </div>
-            <div class="detail-row">
-                <div class="detail-label">ເວລາມາ:</div>
-                <div class="detail-value">${new Date(job.arrival_time).toLocaleString('lo-LA')}</div>
-            </div>
-            ${job.pdi_by ? `<div class="detail-row"><div class="detail-label">PDI ໂດຍ:</div><div class="detail-value">${job.pdi_by}</div></div>` : ''}
-            <div class="detail-row">
-                <div class="detail-label">ອາໄຫຼ່ທີ່ຂໍ:</div>
-                <div class="detail-value">${partsHtml}</div>
-            </div>
+        document.getElementById('modal-body').innerHTML = `
+            <div class="detail-row"><div class="detail-label">ເລກວຽກ:</div><div class="detail-value">#${job.id}</div></div>
+            <div class="detail-row"><div class="detail-label">ທະບຽນ:</div><div class="detail-value">🚕 ${job.vehicle_plate}</div></div>
+            <div class="detail-row"><div class="detail-label">ແກນ:</div><div class="detail-value"><span style="background:${coreColor}; padding:2px 8px; border-radius:10px; font-size:10px;">C${job.core_type}</span></div></div>
+            <div class="detail-row"><div class="detail-label">ສະຖານະ:</div><div class="detail-value">${job.current_status}</div></div>
+            <div class="detail-row"><div class="detail-label">ຊ່າງ:</div><div class="detail-value">${job.assigned_mechanic_id || '-'}</div></div>
+            <div class="detail-row"><div class="detail-label">ອາການ:</div><div class="detail-value">${job.symptoms || '-'}</div></div>
+            <div class="detail-row"><div class="detail-label">ຄ່າແຮງ:</div><div class="detail-value">$${(job.labor_fee || 0).toFixed(2)}</div></div>
+            <div class="detail-row"><div class="detail-label">ເວລາມາ:</div><div class="detail-value">${new Date(job.arrival_time).toLocaleString()}</div></div>
+            <div class="detail-row"><div class="detail-label">ອາໄຫຼ່:</div><div class="detail-value">${partsHtml}</div></div>
         `;
-        
         document.getElementById('job-modal').style.display = 'flex';
     }
 
-    function closeModal() {
-        document.getElementById('job-modal').style.display = 'none';
-    }
-
+    function closeModal() { document.getElementById('job-modal').style.display = 'none'; }
+    
     function filterByStatus(status) {
         currentStatusFilter = status;
         currentPage = 1;
-        
-        // Update active pill styling
-        document.querySelectorAll('.stat-pill').forEach(pill => {
-            pill.classList.remove('active');
-        });
-        document.querySelector(`.stat-pill[data-status="${status}"]`).classList.add('active');
-        
         applyFiltersAndRender();
     }
-
+    
     function setViewMode(mode) {
         viewMode = mode;
         currentPage = 1;
-        
-        // Update button styling
         document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
         if(mode === 'kanban') {
             document.querySelector('.view-btn:first-child').classList.add('active');
@@ -531,10 +490,14 @@
             document.getElementById('kanban-view').style.display = 'none';
             document.getElementById('list-view').style.display = 'block';
         }
-        
         applyFiltersAndRender();
     }
-
+    
+    function toggleCompactMode() {
+        compactMode = document.getElementById('compact-mode').checked;
+        applyFiltersAndRender();
+    }
+    
     function toggleColumn(header) {
         const container = header.parentElement.querySelector('.jobs-container');
         const icon = header.querySelector('.collapse-icon');
@@ -546,8 +509,7 @@
             icon.innerHTML = '▶';
         }
     }
-
-    // Event listeners for search and filter
+    
     document.getElementById('search-input').addEventListener('input', (e) => {
         currentSearchTerm = e.target.value;
         currentPage = 1;
@@ -559,14 +521,9 @@
         currentPage = 1;
         applyFiltersAndRender();
     });
-
-    // Close modal when clicking outside
-    window.onclick = (e) => {
-        const modal = document.getElementById('job-modal');
-        if(e.target === modal) closeModal();
-    };
-
-    // Initial load
+    
+    window.onclick = (e) => { if(e.target === document.getElementById('job-modal')) closeModal(); };
+    
     loadAllData();
     setInterval(loadAllData, 30000);
 </script>

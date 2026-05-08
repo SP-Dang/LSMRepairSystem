@@ -71,10 +71,22 @@
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
     const _s = supabase.createClient(u, k);
 
-    if(localStorage.getItem('lsm_role') !== 'GM') window.location.href = 'index.html';
-    document.getElementById('gm-name-display').innerText = localStorage.getItem('lsm_user_name');
+    // ✅ FIXED: Use the correct key name 'lsm_user_role' (same as index.html)
+    const userRole = localStorage.getItem('lsm_user_role');
+    const userName = localStorage.getItem('lsm_user_name');
+    
+    console.log("GM Menu - User Role:", userRole, "User Name:", userName);
+    
+    // Check if user is GM
+    if(userRole !== 'GM') {
+        console.log("Not GM, redirecting to login. Role:", userRole);
+        window.location.href = 'index.html';
+    }
+    
+    document.getElementById('gm-name-display').innerText = userName || 'GM';
 
     async function loadLiveStats() {
+        // A. Check Low Stock (Threshold < 5)
         const { data: inv } = await _s.from('inventory').select('stock_quantity, unit_price');
         if(inv) {
             const lowItems = inv.filter(i => i.stock_quantity < 5).length;
@@ -87,6 +99,7 @@
             document.getElementById('total-inv-value').innerText = "$" + totalVal.toLocaleString();
         }
 
+        // B. Check Active Jobs
         const { count: jobCount } = await _s.from('job_cards')
             .select('*', { count: 'exact', head: true }).eq('current_status', 'IN_REPAIR');
         
@@ -95,6 +108,7 @@
             document.getElementById('active-jobs-alert').style.display = 'block';
         }
 
+        // C. Check Pending Part Requests
         const { count: reqCount } = await _s.from('part_requests')
             .select('*', { count: 'exact', head: true }).eq('status', 'PENDING');
 
@@ -104,7 +118,10 @@
         }
     }
 
-    function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+    function logout() { 
+        localStorage.clear(); 
+        window.location.href = 'index.html'; 
+    }
 
     loadLiveStats();
     setInterval(loadLiveStats, 30000);

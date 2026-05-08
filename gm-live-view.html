@@ -38,8 +38,6 @@
             .board{flex-wrap:wrap;}
             .column{flex:1; min-width:240px;}
         }
-        
-        .debug-info{background:#1a1a1a; padding:10px; margin-top:20px; border-radius:5px; font-size:11px; color:#888; display:none;}
     </style>
 </head><body>
 
@@ -99,9 +97,6 @@
             <div id="col-COMPLETED" class="jobs-container"></div>
         </div>
     </div>
-    
-    <!-- Debug section (hidden by default, can show for troubleshooting) -->
-    <div id="debug-info" class="debug-info"></div>
 </div>
 
 <script>
@@ -112,29 +107,22 @@
     async function loadLiveView() {
         console.log("Loading live view...");
         
-        // Fetch ALL jobs (no filter)
+        // ✅ FIXED: Use 'arrival_time' instead of 'created_at'
         const { data: jobs, error } = await _s.from('job_cards')
             .select('*')
-            .order('created_at', { ascending: false });
+            .order('arrival_time', { ascending: false });
         
         if(error) {
             console.error("Error loading jobs:", error);
-            document.getElementById('col-QUEUED').innerHTML = `<div class="empty-msg">❌ ຜິດພາດ: ${error.message}</div>`;
+            const errorMsg = `<div class="empty-msg">❌ ຜິດພາດ: ${error.message}</div>`;
+            document.getElementById('col-QUEUED').innerHTML = errorMsg;
+            document.getElementById('col-IN_REPAIR').innerHTML = errorMsg;
+            document.getElementById('col-PDI').innerHTML = errorMsg;
+            document.getElementById('col-COMPLETED').innerHTML = errorMsg;
             return;
         }
         
-        console.log("Jobs fetched:", jobs);
-        
-        // For debugging - show what statuses exist in database
-        if(jobs && jobs.length > 0) {
-            const uniqueStatuses = [...new Set(jobs.map(j => j.current_status))];
-            console.log("Unique statuses in DB:", uniqueStatuses);
-            document.getElementById('debug-info').innerHTML = `📊 DB Statuses: ${uniqueStatuses.join(', ')} | Total Jobs: ${jobs.length}`;
-            document.getElementById('debug-info').style.display = 'block';
-            setTimeout(() => {
-                document.getElementById('debug-info').style.display = 'none';
-            }, 5000);
-        }
+        console.log("Jobs fetched:", jobs ? jobs.length : 0);
         
         // Clear containers
         const containers = {
@@ -189,13 +177,20 @@
                 let symptoms = job.symptoms || 'ບໍ່ມີ';
                 if(symptoms.length > 40) symptoms = symptoms.substring(0, 37) + '...';
                 
-                // Format time
+                // ✅ FIXED: Use 'arrival_time' for the timestamp
                 let timeStr = '-';
                 if(job.arrival_time) {
                     try {
-                        timeStr = new Date(job.arrival_time).toLocaleTimeString('lo-LA', {hour:'2-digit', minute:'2-digit'});
+                        const date = new Date(job.arrival_time);
+                        if(!isNaN(date.getTime())) {
+                            timeStr = date.toLocaleTimeString('lo-LA', {hour:'2-digit', minute:'2-digit'});
+                        } else {
+                            // If date parsing fails, try to extract time from string
+                            const match = job.arrival_time.match(/(\d{2}:\d{2})/);
+                            if(match) timeStr = match[1];
+                        }
                     } catch(e) {
-                        timeStr = job.arrival_time.substring(11, 16);
+                        timeStr = job.arrival_time.substring(11, 16) || '-';
                     }
                 }
                 
@@ -204,7 +199,7 @@
                     <span class="core-tag" style="background:${coreColor}; color:${coreTextColor}">${coreText}</span>
                     <span class="mech-name">👤 ${job.assigned_mechanic_id || 'ຍັງບໍ່ໄດ້ມອບ'}</span>
                     <div class="symptoms">📝 ${symptoms}</div>
-                    <div class="time-stamp">🕐 ${timeStr}</div>
+                    <div class="time-stamp">🕐 ມາ: ${timeStr}</div>
                 `;
                 container.appendChild(card);
             } else {
@@ -212,7 +207,7 @@
             }
         });
         
-        // Update counts
+        // Update count displays
         document.getElementById('count-queued').innerText = counts.QUEUED || 0;
         document.getElementById('count-repair').innerText = counts.IN_REPAIR || 0;
         document.getElementById('count-pdi').innerText = counts.PDI || 0;
@@ -242,7 +237,7 @@
 
     // Initial load
     loadLiveView();
-    // Auto-refresh every 10 seconds for real-time updates
-    setInterval(loadLiveView, 10000);
+    // Auto-refresh every 30 seconds
+    setInterval(loadLiveView, 30000);
 </script>
 </body></html>

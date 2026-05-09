@@ -2,9 +2,10 @@
 <html lang="lo"><head>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LSM - ຈັດການສິນຄ້າຄັງ</title>
+    <title>LSM - ຈັດການສິນຄ້າທັງໝົດ</title>
     <style>
         body{font-family:'Segoe UI','Phetsarath OT',sans-serif;background:#f4f7f6;margin:0;padding:20px}
         .container{max-width:1400px;margin:0 auto}
@@ -37,13 +38,18 @@
         .btn-edit{background:#3498db;color:white;border:none;padding:5px 10px;border-radius:4px;cursor:pointer}
         .btn-stock-in{background:#9b59b6;color:white;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;margin-left:5px}
         .btn-order{background:#f39c12;color:white;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;margin-left:5px}
+        .btn-delete{background:#e74c3c;color:white;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;margin-left:5px}
+        .btn-export{background:#2980b9;color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer;font-weight:bold;margin-left:10px}
+        .btn-upload{background:#8e44ad;color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer;font-weight:bold}
         
         .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;z-index:1000}
-        .modal-content{background:white;padding:30px;border-radius:12px;width:450px;max-width:90%;max-height:80vh;overflow-y:auto}
+        .modal-content{background:white;padding:30px;border-radius:12px;width:500px;max-width:90%;max-height:80vh;overflow-y:auto}
         .modal-content input,.modal-content select{width:95%;padding:10px;margin-bottom:15px;border:1px solid #ddd;border-radius:5px}
         
         .search-box{padding:10px;border:1px solid #ddd;border-radius:5px;width:250px}
-        .filter-row{display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap}
+        .filter-row{display:flex;gap:10px;margin-bottom:15px;flex-wrap:wrap;justify-content:space-between}
+        .filter-controls{display:flex;gap:10px;flex-wrap:wrap}
+        .action-buttons{display:flex;gap:10px}
         
         .fast-movers-list{background:white;border-radius:10px;padding:15px;margin-top:20px}
         .fast-mover-item{display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px solid #eee}
@@ -56,10 +62,17 @@
         .transaction-out{color:#e74c3c}
         .transaction-in{color:#27ae60}
         
+        .upload-area{border:2px dashed #ddd;padding:30px;text-align:center;border-radius:10px;margin-bottom:20px;cursor:pointer}
+        .upload-area:hover{background:#f9f9f9;border-color:#27ae60}
+        .preview-table{max-height:300px;overflow-y:auto;margin-top:15px}
+        .preview-table table{width:100%;border-collapse:collapse;font-size:12px}
+        .preview-table th,.preview-table td{padding:8px;border:1px solid #ddd;text-align:left}
+        
         @media (max-width:768px){
             .stats-grid{grid-template-columns:1fr 1fr}
             .inventory-table{font-size:12px}
             td,th{padding:8px}
+            .filter-controls{flex-direction:column}
         }
     </style>
 </head><body>
@@ -67,10 +80,13 @@
 <div class="container">
     <div class="header">
         <div>
-            <h1>📦 ຈັດການສິນຄ້າຄັງ</h1>
+            <h1>📦 ຈັດການສິນຄ້າທັງໝົດ</h1>
             <a href="gm-menu.html" style="color:#2980b9;text-decoration:none">⬅️ ກັບຄືນແຜງຄວບຄຸມ</a>
         </div>
-        <button class="btn-add" onclick="openModal()">+ ເພີ່ມອາໄຫຼ່ໃໝ່</button>
+        <div class="action-buttons">
+            <button class="btn-upload" onclick="openBulkUploadModal()">📤 ອັບໂຫຼດຫຼາຍລາຍການ</button>
+            <button class="btn-add" onclick="openModal()">+ ເພີ່ມອາໄຫຼ່ໃໝ່</button>
+        </div>
     </div>
 
     <!-- Stats Overview -->
@@ -78,25 +94,29 @@
         <div class="stat-card"><h3>ລາຍການທັງໝົດ</h3><p id="stat-count">0</p></div>
         <div class="stat-card"><h3>ສິນຄ້າເຫຼືອໜ້ອຍ (&lt;5)</h3><p id="stat-low" style="color:#e74c3c">0</p></div>
         <div class="stat-card"><h3>ຕ້ອງສັ່ງຊື້ (ROP)</h3><p id="stat-reorder" style="color:#f39c12">0</p></div>
-        <div class="stat-card"><h3>ມູນຄ່າສິນຄ້າຄັງ</h3><p id="stat-value">$0</p></div>
+        <div class="stat-card"><h3>ມູນຄ່າສິນຄ້າທັງໝົດ</h3><p id="stat-value">$0</p></div>
     </div>
 
-    <!-- Tabs -->
+    <!-- Tabs with Export Buttons -->
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('inventory')">📋 ສິນຄ້າຄັງ</button>
+        <button class="tab-btn active" onclick="switchTab('inventory')">📋 ສິນຄ້າທັງໝົດ</button>
         <button class="tab-btn" onclick="switchTab('fastmovers')">🏆 ອາໄຫຼ່ໃຊ້ຫຼາຍທີ່ສຸດ</button>
         <button class="tab-btn" onclick="switchTab('transactions')">📜 ປະຫວັດການເຄື່ອນໄຫວ</button>
+        <div style="flex:1"></div>
+        <button id="export-btn" class="btn-export" onclick="exportCurrentTab()">📎 ສົ່ງອອກ Excel</button>
     </div>
 
     <!-- Tab 1: Inventory Table -->
     <div id="inventory-tab">
         <div class="filter-row">
-            <input type="text" id="search-input" class="search-box" placeholder="🔍 ຄົ້ນຫາອາໄຫຼ່...">
-            <select id="stock-filter" class="search-box">
-                <option value="all">ສະແດງທັງໝົດ</option>
-                <option value="low">ສິນຄ້າເຫຼືອໜ້ອຍ (&lt;5)</option>
-                <option value="reorder">ຕ້ອງສັ່ງຊື້ (ROP)</option>
-            </select>
+            <div class="filter-controls">
+                <input type="text" id="search-input" class="search-box" placeholder="🔍 ຄົ້ນຫາອາໄຫຼ່...">
+                <select id="stock-filter" class="search-box">
+                    <option value="all">ສະແດງທັງໝົດ</option>
+                    <option value="low">ສິນຄ້າເຫຼືອໜ້ອຍ (&lt;5)</option>
+                    <option value="reorder">ຕ້ອງສັ່ງຊື້ (ROP)</option>
+                </select>
+            </div>
         </div>
         <div style="overflow-x: auto;">
             <table class="inventory-table">
@@ -110,7 +130,7 @@
         </div>
     </div>
 
-    <!-- Tab 2: Fast Movers (Top 10 used parts) -->
+    <!-- Tab 2: Fast Movers -->
     <div id="fastmovers-tab" style="display:none;">
         <div class="fast-movers-list">
             <h3>🏆 ອາໄຫຼ່ທີ່ມີການນຳໃຊ້ຫຼາຍທີ່ສຸດ (30 ວັນຜ່ານມາ)</h3>
@@ -158,6 +178,27 @@
     </div>
 </div>
 
+<!-- Bulk Upload Modal -->
+<div id="bulk-modal" class="modal">
+    <div class="modal-content" style="width:700px; max-width:95%">
+        <h2>📤 ອັບໂຫຼດຫຼາຍລາຍການ (Excel/CSV)</h2>
+        <div class="upload-area" onclick="document.getElementById('file-input').click()">
+            📂 ຄລິກເພື່ອເລືອກໄຟລ໌ Excel ຫຼື CSV<br>
+            <small style="color:#888">ຮອງຮັບ .xlsx, .xls, .csv</small>
+        </div>
+        <input type="file" id="file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="previewExcel()">
+        <div id="preview-area" class="preview-table" style="display:none"></div>
+        <div style="display:flex; gap:10px; margin-top:15px">
+            <button class="btn-add" style="flex:1" onclick="uploadBulk()">📤 ອັບໂຫຼດຂໍ້ມູນ</button>
+            <button onclick="closeBulkModal()" style="flex:1; background:#95a5a6; border:none; color:white; border-radius:5px">ຍົກເລີກ</button>
+        </div>
+        <div style="margin-top:15px; padding:10px; background:#f0f0f0; border-radius:5px; font-size:12px">
+            <b>📝 ຮູບແບບຂໍ້ມູນທີ່ຕ້ອງການ:</b><br>
+            ຖັນທີ 1: ລະຫັດອາໄຫຼ່ | ຖັນທີ 2: ຊື່ອາໄຫຼ່ | ຖັນທີ 3: ຈຳນວນ | ຖັນທີ 4: ລາຄາ | ຖັນທີ 5: ຈຸດສັ່ງຊື້ (ທາງເລືອກ)
+        </div>
+    </div>
+</div>
+
 <script>
     const u = "https://lophnkwkmkgkrdfxgtmt.supabase.co"; 
     const k = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcGhua3drbWtna3JkZnhndG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3ODIxNTQsImV4cCI6MjA5MDM1ODE1NH0.ITu8VpDZy1pnJgafBYkSVOGTK0PHKkD7YN0bdH2UT_I";
@@ -165,6 +206,8 @@
 
     let inventoryData = [];
     let isEditing = false;
+    let currentTab = 'inventory';
+    let bulkData = [];
 
     async function loadInventory() {
         const { data } = await _s.from('inventory').select('*').order('part_name');
@@ -210,13 +253,38 @@
                     <td>$${((item.stock_quantity || 0) * (item.unit_price || 0)).toFixed(2)}</td>
                     <td>${statusBadge}</td>
                     <td>
-                        <button class="btn-edit" onclick='editItem("${item.part_id}", "${item.part_name}", ${item.stock_quantity}, ${item.unit_price || 0}, ${item.reorder_point || 5})'>✏️ ແກ້ໄຂ</button>
-                        <button class="btn-stock-in" onclick='openStockModal("${item.part_id}", "${item.part_name}")'>📥 ເພີ່ມສິນຄ້າ</button>
-                        ${isReorder ? `<button class="btn-order" onclick='suggestOrder("${item.part_id}", "${item.part_name}", ${item.stock_quantity})'>🛒 ສັ່ງຊື້</button>` : ''}
+                        <button class="btn-edit" onclick='editItem("${item.part_id}", "${item.part_name}", ${item.stock_quantity}, ${item.unit_price || 0}, ${item.reorder_point || 5})'>✏️</button>
+                        <button class="btn-stock-in" onclick='openStockModal("${item.part_id}", "${item.part_name}")'>📥</button>
+                        ${isReorder ? `<button class="btn-order" onclick='suggestOrder("${item.part_id}", "${item.part_name}", ${item.stock_quantity})'>🛒</button>` : ''}
+                        <button class="btn-delete" onclick='deletePart("${item.part_id}", "${item.part_name}")'>🗑️</button>
                     </td>
                 </tr>
             `;
         });
+    }
+
+    async function deletePart(partId, partName) {
+        if(!confirm(`ຕ້ອງການລຶບ ${partName} (${partId}) ອອກຈາກລະບົບແທ້ບໍ່?`)) return;
+        
+        // Check if part has been used in any job
+        const { data: usedParts } = await _s.from('part_requests')
+            .select('id')
+            .eq('part_id', partId)
+            .limit(1);
+        
+        if(usedParts && usedParts.length > 0) {
+            alert(`⚠️ ບໍ່ສາມາດລຶບ ${partName} ໄດ້ ເນື່ອງຈາກມີປະຫວັດການນຳໃຊ້ແລ້ວ`);
+            return;
+        }
+        
+        const { error } = await _s.from('inventory').delete().eq('part_id', partId);
+        
+        if(!error) {
+            alert(`✅ ລຶບ ${partName} ສຳເລັດ!`);
+            loadInventory();
+        } else {
+            alert("ຜິດພາດ: " + error.message);
+        }
     }
 
     function updateStats() {
@@ -323,12 +391,191 @@
     }
 
     function suggestOrder(partId, partName, currentStock) {
-        const reorderQty = prompt(`ສັ່ງຊື້ ${partName}\nເຫຼືອໃນຄັງ: ${currentStock} ຊິ້ນ\nແນະນຳສັ່ງ: 20 ຊິ້ນ\n\nກະລຸນາໃສ່ຈຳນວນທີ່ຕ້ອງການສັ່ງ:`, "20");
-        if(reorderQty && !isNaN(reorderQty)) {
+        const suggestedQty = Math.max(20, Math.ceil(currentStock * 1.5));
+        const reorderQty = prompt(`ສັ່ງຊື້ ${partName}\nເຫຼືອໃນຄັງ: ${currentStock} ຊິ້ນ\nແນະນຳສັ່ງ: ${suggestedQty} ຊິ້ນ\n\nກະລຸນາໃສ່ຈຳນວນທີ່ຕ້ອງການສັ່ງ:`, suggestedQty.toString());
+        if(reorderQty && !isNaN(reorderQty) && parseInt(reorderQty) > 0) {
             alert(`📋 ສ້າງຄຳສັ່ງຊື້ສຳລັບ ${partName}: ${reorderQty} ຊິ້ນ\nກະລຸນາຕິດຕໍ່ຜູ້ສະໜອງ`);
         }
     }
 
+    // ============ EXPORT FUNCTIONS ============
+    function exportCurrentTab() {
+        if(currentTab === 'inventory') {
+            exportToExcel(inventoryData, 'ສິນຄ້າທັງໝົດ');
+        } else if(currentTab === 'fastmovers') {
+            exportFastMovers();
+        } else if(currentTab === 'transactions') {
+            exportTransactions();
+        }
+    }
+
+    function exportToExcel(data, filename) {
+        const exportData = data.map(item => ({
+            'ລະຫັດອາໄຫຼ່': item.part_id,
+            'ຊື່ອາໄຫຼ່': item.part_name,
+            'ຈຳນວນໃນຄັງ': item.stock_quantity,
+            'ລາຄາຕໍ່ໜ່ວຍ': item.unit_price || 0,
+            'ມູນຄ່າລວມ': (item.stock_quantity * (item.unit_price || 0)).toFixed(2),
+            'ຈຸດສັ່ງຊື້ (ROP)': item.reorder_point || 5,
+            'ສະຖານະ': item.stock_quantity <= (item.reorder_point || 5) ? 'ຕ້ອງສັ່ງຊື້' : 'ພຽງພໍ'
+        }));
+        
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, filename);
+        XLSX.writeFile(wb, `${filename}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    }
+
+    async function exportFastMovers() {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        const { data: transactions } = await _s.from('stock_transactions')
+            .select('part_id, part_name, quantity')
+            .eq('transaction_type', 'ISSUE')
+            .gte('created_at', thirtyDaysAgo.toISOString());
+        
+        const usageMap = {};
+        if(transactions) {
+            transactions.forEach(t => {
+                const qty = Math.abs(t.quantity);
+                if(!usageMap[t.part_id]) usageMap[t.part_id] = { name: t.part_name, qty: 0 };
+                usageMap[t.part_id].qty += qty;
+            });
+        }
+        
+        const exportData = Object.entries(usageMap).sort((a,b) => b[1].qty - a[1].qty).map(([id, data], idx) => ({
+            'ອັນດັບ': idx + 1,
+            'ລະຫັດອາໄຫຼ່': id,
+            'ຊື່ອາໄຫຼ່': data.name,
+            'ຈຳນວນທີ່ໃຊ້ (30ວັນ)': data.qty
+        }));
+        
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'ອາໄຫຼ່ໃຊ້ຫຼາຍທີ່ສຸດ');
+        XLSX.writeFile(wb, `fast_movers_${new Date().toISOString().split('T')[0]}.xlsx`);
+    }
+
+    async function exportTransactions() {
+        const { data } = await _s.from('stock_transactions')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(500);
+        
+        if(!data || data.length === 0) {
+            alert("ບໍ່ມີຂໍ້ມູນປະຫວັດການເຄື່ອນໄຫວ");
+            return;
+        }
+        
+        const exportData = data.map(t => ({
+            'ວັນທີເວລາ': new Date(t.created_at).toLocaleString('lo-LA'),
+            'ລະຫັດອາໄຫຼ່': t.part_id,
+            'ຊື່ອາໄຫຼ່': t.part_name,
+            'ປະເພດ': t.transaction_type === 'ISSUE' ? 'ເບີກຈ່າຍ' : 'ຮັບເຂົ້າຄັງ',
+            'ຈຳນວນ': Math.abs(t.quantity),
+            'ພະນັກງານ': t.staff_name || '-',
+            'ເຫຼືອຫຼັງເຄື່ອນໄຫວ': t.new_stock
+        }));
+        
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'ປະຫວັດການເຄື່ອນໄຫວ');
+        XLSX.writeFile(wb, `transactions_${new Date().toISOString().split('T')[0]}.xlsx`);
+    }
+
+    // ============ BULK UPLOAD FUNCTIONS ============
+    function openBulkUploadModal() {
+        document.getElementById('bulk-modal').style.display = 'flex';
+        document.getElementById('file-input').value = '';
+        document.getElementById('preview-area').style.display = 'none';
+        bulkData = [];
+    }
+
+    function closeBulkModal() {
+        document.getElementById('bulk-modal').style.display = 'none';
+    }
+
+    function previewExcel() {
+        const file = document.getElementById('file-input').files[0];
+        if(!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+            
+            if(rows.length < 2) {
+                alert("ໄຟລ໌ບໍ່ມີຂໍ້ມູນ");
+                return;
+            }
+            
+            // Skip header row
+            const previewRows = rows.slice(1, 11);
+            bulkData = rows.slice(1).filter(row => row[0] && row[1]).map(row => ({
+                part_id: row[0].toString().trim(),
+                part_name: row[1].toString().trim(),
+                stock_quantity: parseInt(row[2]) || 0,
+                unit_price: parseFloat(row[3]) || 0,
+                reorder_point: parseInt(row[4]) || 5
+            }));
+            
+            let previewHtml = `
+                <h4>📋 ຕົວຢ່າງຂໍ້ມູນ (10 ລາຍການທຳອິດ)</h4>
+                <table>
+                    <thead><tr><th>ລະຫັດ</th><th>ຊື່ອາໄຫຼ່</th><th>ຈຳນວນ</th><th>ລາຄາ</th><th>ROP</th></tr></thead>
+                    <tbody>
+            `;
+            
+            previewRows.slice(0, 10).forEach(row => {
+                if(row[0] && row[1]) {
+                    previewHtml += `<tr>
+                        <td>${row[0]}</td>
+                        <td>${row[1]}</td>
+                        <td>${row[2] || 0}</td>
+                        <td>${row[3] || 0}</td>
+                        <td>${row[4] || 5}</td>
+                    </tr>`;
+                }
+            });
+            
+            previewHtml += `</tbody></table><p>ທັງໝົດ ${bulkData.length} ລາຍການ</p>`;
+            document.getElementById('preview-area').innerHTML = previewHtml;
+            document.getElementById('preview-area').style.display = 'block';
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    async function uploadBulk() {
+        if(bulkData.length === 0) {
+            alert("ກະລຸນາເລືອກໄຟລ໌ກ່ອນ");
+            return;
+        }
+        
+        if(!confirm(`ຕ້ອງການອັບໂຫຼດ ${bulkData.length} ລາຍການເຂົ້າສູ່ລະບົບແທ້ບໍ່?`)) return;
+        
+        let success = 0;
+        let failed = 0;
+        
+        for(const item of bulkData) {
+            const { error } = await _s.from('inventory').upsert([item], { onConflict: 'part_id' });
+            if(!error) {
+                success++;
+                await logTransaction(item.part_id, item.part_name, item.stock_quantity, 'RECEIVE', 0, item.stock_quantity);
+            } else {
+                failed++;
+                console.error("Failed:", item.part_id, error);
+            }
+        }
+        
+        alert(`✅ ອັບໂຫຼດສຳເລັດ ${success} ລາຍການ\n❌ ຜິດພາດ ${failed} ລາຍການ`);
+        closeBulkModal();
+        loadInventory();
+    }
+
+    // ============ CRUD FUNCTIONS ============
     function openModal() {
         isEditing = false;
         document.getElementById('modal-title').innerText = "ເພີ່ມອາໄຫຼ່ໃໝ່";
@@ -435,6 +682,7 @@
     }
 
     function switchTab(tab) {
+        currentTab = tab;
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.getElementById('inventory-tab').style.display = 'none';
         document.getElementById('fastmovers-tab').style.display = 'none';

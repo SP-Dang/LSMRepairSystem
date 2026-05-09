@@ -19,15 +19,31 @@
         .core-selection{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap} 
         .core-btn{flex:1;padding:12px;border:2px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;text-align:center;font-size:12px;font-weight:bold;transition:0.3s} 
         .core-btn.active{background:#ff4500;color:#fff;border-color:#ff4500} 
-        button#submit{width:100%;padding:18px;background:#1a1a1a;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:20px;transition:0.2s} 
-        button#submit:hover{background:#333} 
+        
+        .button-group{display:flex;gap:15px;margin-top:20px}
+        .button-group button{flex:1;padding:18px;border:none;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer;transition:0.2s}
+        .btn-create{background:#1a1a1a;color:#fff}
+        .btn-create:hover{background:#333}
+        .btn-assign{background:#f1c40f;color:#1a1a1a}
+        .btn-assign:hover{background:#e67e22;color:#fff}
+        
         .success-msg{display:none;background:#d4edda;color:#155724;padding:15px;border-radius:8px;text-align:center;margin-top:15px;font-weight:bold}
         .logout-btn{font-size:14px;color:#e74c3c;cursor:pointer;text-decoration:none;border:1px solid #e74c3c;background:none;padding:4px 10px;border-radius:5px;font-weight:bold;transition:0.2s}
         .logout-btn:hover{background:#e74c3c;color:#fff}
         #search-status{font-size:10px;font-weight:bold;margin-top:4px;display:block}
+        
+        /* Assign Modal */
+        .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;z-index:1000}
+        .modal-content{background:white;padding:25px;border-radius:12px;width:350px;max-width:90%}
+        .modal-content select{width:100%;padding:12px;margin:15px 0;border:1px solid #ddd;border-radius:8px;font-size:14px}
+        .modal-content button{padding:12px;border-radius:8px;border:none;font-weight:bold;cursor:pointer}
+        .btn-confirm{background:#27ae60;color:white;flex:2}
+        .btn-cancel{background:#95a5a6;color:white;flex:1}
+        
         @media (max-width:500px){
             .grid{grid-template-columns:1fr}
             .check-grid{grid-template-columns:1fr}
+            .button-group{flex-direction:column}
         }
     </style>
 </head><body>
@@ -73,8 +89,26 @@
         <div class="core-btn" id="core-3" onclick="setCore(3, this)">ແກນ 3: ໃຫຍ່ (GMS)</div>
     </div>
 
-    <button id="submit" onclick="submitJob()">📋 ສ້າງໃບສັ່ງຊ່ອມ</button>
+    <div class="button-group">
+        <button class="btn-create" onclick="submitJob(false)">📋 ສ້າງໃບສັ່ງຊ່ອມຢ່າງດຽວ</button>
+        <button class="btn-assign" onclick="submitJob(true)">✅ ສ້າງໃບສັ່ງຊ່ອມ + ມອບວຽກ</button>
+    </div>
     <div id="msg" class="success-msg">✅ ສ້າງໃບສັ່ງຊ່ອມ #<span id="jobNo"></span> ສຳເລັດ!</div>
+</div>
+
+<!-- Assign Modal -->
+<div id="assign-modal" class="modal">
+    <div class="modal-content">
+        <h3 style="margin-top:0">✅ ມອບໝາຍວຽກໃຫ້ຊ່າງ</h3>
+        <p>ວຽກ #<span id="assign-job-id"></span> - <span id="assign-plate"></span></p>
+        <select id="mechanic-select">
+            <option value="">-- ເລືອກຊ່າງ --</option>
+        </select>
+        <div style="display:flex; gap:10px; margin-top:15px">
+            <button class="btn-confirm" onclick="confirmAssign()">✅ ຢືນຢັນການມອບໝາຍ</button>
+            <button class="btn-cancel" onclick="closeAssignModal()">ຍົກເລີກ</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -90,6 +124,29 @@
     }
 
     let selectedCore = 2;
+    let pendingJobId = null;
+    let pendingPlate = null;
+    let mechanicList = [];
+
+    // Load mechanics list
+    async function loadMechanics() {
+        const { data } = await _s.from('staff')
+            .select('name')
+            .eq('role', 'MECHANIC')
+            .order('name');
+        
+        if(data && data.length > 0) {
+            mechanicList = data.map(m => m.name);
+        } else {
+            mechanicList = ["Somchai", "Keo", "Noi", "Boun", "Phet", "Somsak"];
+        }
+        
+        const select = document.getElementById('mechanic-select');
+        select.innerHTML = '<option value="">-- ເລືອກຊ່າງ --</option>';
+        mechanicList.forEach(mech => {
+            select.innerHTML += `<option value="${mech}">${mech}</option>`;
+        });
+    }
 
     function setCore(val, el) {
         selectedCore = val;
@@ -129,13 +186,13 @@
         }
     }
 
-    async function submitJob() {
+    async function submitJob(openAssignModal) {
         const plate = document.getElementById('plate').value.toUpperCase();
         const model = document.getElementById('model').value;
         const vin = document.getElementById('vin').value;
         const owner = document.getElementById('owner').value;
         const phone = document.getElementById('phone').value;
-        const btn = document.getElementById('submit');
+        const btn = document.querySelector(openAssignModal ? '.btn-assign' : '.btn-create');
         
         const symptoms = Array.from(document.querySelectorAll('.symptom:checked'))
                              .map(cb => cb.value).join(', ');
@@ -165,27 +222,98 @@
         if (error) {
             alert("ຜິດພາດ: " + error.message);
             btn.disabled = false;
-            btn.innerText = "ສ້າງໃບສັ່ງຊ່ອມ";
+            btn.innerText = openAssignModal ? "ສ້າງ + ມອບວຽກ" : "ສ້າງໃບສັ່ງຊ່ອມ";
         } else {
-            document.getElementById('jobNo').innerText = data[0].id;
+            const jobId = data[0].id;
+            document.getElementById('jobNo').innerText = jobId;
+            
+            if(openAssignModal) {
+                // Store pending job and open assign modal
+                pendingJobId = jobId;
+                pendingPlate = plate;
+                document.getElementById('assign-job-id').innerText = jobId;
+                document.getElementById('assign-plate').innerText = plate;
+                await loadMechanics();
+                document.getElementById('assign-modal').style.display = 'flex';
+                btn.disabled = false;
+                btn.innerText = "ສ້າງ + ມອບວຽກ";
+            } else {
+                // Just show success message and reset form
+                document.getElementById('msg').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('plate').value = "";
+                    document.getElementById('model').value = "";
+                    document.getElementById('vin').value = "";
+                    document.getElementById('owner').value = "";
+                    document.getElementById('phone').value = "";
+                    document.querySelectorAll('.symptom:checked').forEach(cb => cb.checked = false);
+                    document.getElementById('msg').style.display = 'none';
+                    btn.disabled = false;
+                    btn.innerText = "ສ້າງໃບສັ່ງຊ່ອມ";
+                }, 2000);
+            }
+        }
+    }
+
+    async function confirmAssign() {
+        const selectedMechanic = document.getElementById('mechanic-select').value;
+        if(!selectedMechanic) {
+            alert("ກະລຸນາເລືອກຊ່າງ");
+            return;
+        }
+        
+        // Check if mechanic already has too many jobs (max 3)
+        const { count } = await _s.from('job_cards')
+            .select('*', { count: 'exact', head: true })
+            .eq('assigned_mechanic_id', selectedMechanic)
+            .eq('current_status', 'IN_REPAIR');
+        
+        if(count >= 3) {
+            alert(`⚠️ ຊ່າງ ${selectedMechanic} ກຳລັງສ້ອມແປງ ${count} ຄັນແລ້ວ, ກະລຸນາເລືອກຊ່າງອື່ນ`);
+            return;
+        }
+        
+        const { error } = await _s.from('job_cards')
+            .update({ assigned_mechanic_id: selectedMechanic, current_status: 'IN_REPAIR' })
+            .eq('id', pendingJobId);
+        
+        if(!error) {
+            alert(`✅ ມອບໝາຍວຽກ #${pendingJobId} ໃຫ້ຊ່າງ ${selectedMechanic} ສຳເລັດ!`);
+            closeAssignModal();
+            
+            // Reset form
+            document.getElementById('plate').value = "";
+            document.getElementById('model').value = "";
+            document.getElementById('vin').value = "";
+            document.getElementById('owner').value = "";
+            document.getElementById('phone').value = "";
+            document.querySelectorAll('.symptom:checked').forEach(cb => cb.checked = false);
+            
+            // Show success
+            document.getElementById('jobNo').innerText = pendingJobId;
             document.getElementById('msg').style.display = 'block';
             setTimeout(() => {
-                document.getElementById('plate').value = "";
-                document.getElementById('model').value = "";
-                document.getElementById('vin').value = "";
-                document.getElementById('owner').value = "";
-                document.getElementById('phone').value = "";
-                document.querySelectorAll('.symptom:checked').forEach(cb => cb.checked = false);
                 document.getElementById('msg').style.display = 'none';
-                btn.disabled = false;
-                btn.innerText = "ສ້າງໃບສັ່ງຊ່ອມ";
             }, 2000);
+        } else {
+            alert("ຜິດພາດ: " + error.message);
         }
+        
+        pendingJobId = null;
+        pendingPlate = null;
+    }
+
+    function closeAssignModal() {
+        document.getElementById('assign-modal').style.display = 'none';
+        pendingJobId = null;
+        pendingPlate = null;
     }
 
     function logout() {
         localStorage.clear();
         window.location.href = 'index.html';
     }
+    
+    loadMechanics();
 </script>
 </body></html>

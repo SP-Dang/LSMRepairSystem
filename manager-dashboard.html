@@ -46,6 +46,7 @@
     <div class="stats-info">
         <span>📋 ລົດທີ່ລໍຖ້າມອບໝາຍ: <strong id="queue-count">0</strong></span>
         <span>🔧 ຊ່າງທີ່ມີຢູ່: <strong id="mechanic-count">0</strong></span>
+        <span>👷 ຊ່າງຫວ່າງ: <strong id="available-mechanics">0</strong></span>
     </div>
 
     <div id="incoming-list">ກຳລັງໂຫຼດຂໍ້ມູນ...</div>
@@ -87,6 +88,20 @@
 
         document.getElementById('queue-count').innerText = data ? data.length : 0;
 
+        // Calculate mechanic workloads
+        const mechanicWorkload = {};
+        let availableCount = 0;
+        
+        for(const mech of activeMechanics) {
+            const { count } = await _s.from('job_cards')
+                .select('*', { count: 'exact', head: true })
+                .eq('assigned_mechanic_id', mech)
+                .eq('current_status', 'IN_REPAIR');
+            mechanicWorkload[mech] = count || 0;
+            if(mechanicWorkload[mech] < 3) availableCount++;
+        }
+        document.getElementById('available-mechanics').innerText = availableCount;
+
         if(!data || data.length === 0) {
             list.innerHTML = "<div class='empty-state'>🎉 ບໍ່ມີລົດທີ່ລໍຖ້າມອບໝາຍ</div>";
             return;
@@ -94,25 +109,16 @@
 
         list.innerHTML = "";
         for(const job of data) {
-            // Check current workload for each mechanic to show in dropdown
-            const mechanicWorkload = {};
-            for(const mech of activeMechanics) {
-                const { count } = await _s.from('job_cards')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('assigned_mechanic_id', mech)
-                    .eq('current_status', 'IN_REPAIR');
-                mechanicWorkload[mech] = count || 0;
-            }
-            
             const div = document.createElement('div');
             div.className = 'job-card';
             
             let optionsHtml = '<option value="">-- ເລືອກຊ່າງ --</option>';
-            activeMechanics.forEach(mech => {
+            for(const mech of activeMechanics) {
                 const workload = mechanicWorkload[mech] || 0;
-                const warning = workload >= 3 ? '⚠️ (ເຕັມ)' : ` (${workload}/3)`;
-                optionsHtml += `<option value="${mech}" ${workload >= 3 ? 'disabled style="color:#e74c3c"' : ''}>${mech}${warning}</option>`;
-            });
+                const isFull = workload >= 3;
+                const warning = isFull ? '⚠️ (ເຕັມ)' : ` (${workload}/3)`;
+                optionsHtml += `<option value="${mech}" ${isFull ? 'disabled style="color:#e74c3c"' : ''}>${mech}${warning}</option>`;
+            }
             
             div.innerHTML = `
                 <div class="info">
@@ -136,7 +142,7 @@
         const mechName = document.getElementById(`mech-${jobId}`).value;
         if(!mechName) return alert("ກະລຸນາເລືອກຊ່າງກ່ອນ!");
         
-        // Check if mechanic already has too many jobs (max 3)
+        // Double check workload
         const { count } = await _s.from('job_cards')
             .select('*', { count: 'exact', head: true })
             .eq('assigned_mechanic_id', mechName)
@@ -144,6 +150,8 @@
         
         if(count >= 3) {
             alert(`⚠️ ຊ່າງ ${mechName} ກຳລັງສ້ອມແປງ ${count} ຄັນແລ້ວ (ສູງສຸດ 3 ຄັນ), ກະລຸນາເລືອກຊ່າງອື່ນ`);
+            // Reload to refresh the dropdown
+            loadQueue();
             return;
         }
 

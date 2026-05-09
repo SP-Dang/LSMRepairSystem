@@ -497,84 +497,177 @@
     }
 
     function previewExcel() {
-        const file = document.getElementById('file-input').files[0];
-        if(!file) return;
+    const file = document.getElementById('file-input').files[0];
+    if(!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
         
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-            
-            if(rows.length < 2) {
-                alert("ໄຟລ໌ບໍ່ມີຂໍ້ມູນ");
-                return;
-            }
-            
-            // Skip header row
-            const previewRows = rows.slice(1, 11);
-            bulkData = rows.slice(1).filter(row => row[0] && row[1]).map(row => ({
-                part_id: row[0].toString().trim(),
-                part_name: row[1].toString().trim(),
-                stock_quantity: parseInt(row[2]) || 0,
-                unit_price: parseFloat(row[3]) || 0,
-                reorder_point: parseInt(row[4]) || 5
-            }));
-            
-            let previewHtml = `
-                <h4>📋 ຕົວຢ່າງຂໍ້ມູນ (10 ລາຍການທຳອິດ)</h4>
-                <table>
-                    <thead><tr><th>ລະຫັດ</th><th>ຊື່ອາໄຫຼ່</th><th>ຈຳນວນ</th><th>ລາຄາ</th><th>ROP</th></tr></thead>
-                    <tbody>
-            `;
-            
-            previewRows.slice(0, 10).forEach(row => {
-                if(row[0] && row[1]) {
-                    previewHtml += `<tr>
-                        <td>${row[0]}</td>
-                        <td>${row[1]}</td>
-                        <td>${row[2] || 0}</td>
-                        <td>${row[3] || 0}</td>
-                        <td>${row[4] || 5}</td>
-                    </tr>`;
-                }
-            });
-            
-            previewHtml += `</tbody></table><p>ທັງໝົດ ${bulkData.length} ລາຍການ</p>`;
-            document.getElementById('preview-area').innerHTML = previewHtml;
-            document.getElementById('preview-area').style.display = 'block';
-        };
-        reader.readAsArrayBuffer(file);
-    }
-
-    async function uploadBulk() {
-        if(bulkData.length === 0) {
-            alert("ກະລຸນາເລືອກໄຟລ໌ກ່ອນ");
+        if(rows.length < 2) {
+            alert("ໄຟລ໌ບໍ່ມີຂໍ້ມູນ");
             return;
         }
         
-        if(!confirm(`ຕ້ອງການອັບໂຫຼດ ${bulkData.length} ລາຍການເຂົ້າສູ່ລະບົບແທ້ບໍ່?`)) return;
+        // Get headers from first row
+        const headers = rows[0].map(h => String(h || '').toLowerCase().trim());
         
-        let success = 0;
-        let failed = 0;
+        // Find column indexes
+        const colIndex = {
+            part_id: headers.findIndex(h => h.includes('part_id') || h.includes('ລະຫັດ')),
+            part_name: headers.findIndex(h => h.includes('part_name') || h.includes('ຊື່')),
+            stock_quantity: headers.findIndex(h => h.includes('stock') || h.includes('ຈຳນວນ') || h.includes('quantity')),
+            unit_price: headers.findIndex(h => h.includes('unit_price') || h.includes('ລາຄາ') || h.includes('price')),
+            reorder_point: headers.findIndex(h => h.includes('reorder') || h.includes('rop'))
+        };
         
-        for(const item of bulkData) {
-            const { error } = await _s.from('inventory').upsert([item], { onConflict: 'part_id' });
-            if(!error) {
-                success++;
-                await logTransaction(item.part_id, item.part_name, item.stock_quantity, 'RECEIVE', 0, item.stock_quantity);
-            } else {
-                failed++;
-                console.error("Failed:", item.part_id, error);
+        console.log("Column mapping:", colIndex);
+        
+        // Process rows
+        bulkData = [];
+        const previewRows = [];
+        
+        for(let i = 1; i < rows.length; i++) {
+            const row = rows[i];
+            if(!row || row.length === 0) continue;
+            
+            const partId = colIndex.part_id >= 0 ? (row[colIndex.part_id] || '').toString().trim() : '';
+            const partName = colIndex.part_name >= 0 ? (row[colIndex.part_name] || '').toString().trim() : '';
+            
+            if(!partId || !partName) continue;
+            
+            const item = {
+                part_id: partId,
+                part_name: partName,
+                stock_quantity: colIndex.stock_quantity >= 0 ? parseInt(row[colIndex.stock_quantity]) || 0 : 0,
+                unit_price: colIndex.unit_price >= 0 ? parseFloat(row[colIndex.unit_price]) || 0 : 0
+            };
+            
+            if(colIndex.reorder_point >= 0 && row[colIndex.reorder_point]) {
+                item.reorder_point = parseInt(row[colIndex.reorder_point]) || 5;
+            }
+            
+            bulkData.push(item);
+            
+            if(previewRows.length < 10) {
+                previewRows.push(item);
             }
         }
         
-        alert(`✅ ອັບໂຫຼດສຳເລັດ ${success} ລາຍການ\n❌ ຜິດພາດ ${failed} ລາຍການ`);
-        closeBulkModal();
-        loadInventory();
+        // Build preview HTML
+        let previewHtml = `
+            <h4>📋 ຕົວຢ່າງຂໍ້ມູນ (ສູງສຸດ 10 ລາຍການ)</h4>
+            <div style="overflow-x:auto">
+                <table>
+                    <thead><tr style="background:#f0f0f0">
+                        <th>ລະຫັດ</th><th>ຊື່ອາໄຫຼ່</th><th>ຈຳນວນ</th><th>ລາຄາ</th>
+                    </tr></thead>
+                    <tbody>
+        `;
+        
+        previewRows.forEach(item => {
+            previewHtml += `<tr>
+                <td>${item.part_id}</td>
+                <td>${item.part_name}</td>
+                <td>${item.stock_quantity}</td>
+                <td>$${item.unit_price.toFixed(2)}</td>
+            </tr>`;
+        });
+        
+        previewHtml += `</tbody></table></div><p>ທັງໝົດ ${bulkData.length} ລາຍການພ້ອມອັບໂຫຼດ</p>`;
+        document.getElementById('preview-area').innerHTML = previewHtml;
+        document.getElementById('preview-area').style.display = 'block';
+    };
+    reader.readAsArrayBuffer(file);
+}
+    
+    async function uploadBulk() {
+    if(bulkData.length === 0) {
+        alert("ກະລຸນາເລືອກໄຟລ໌ກ່ອນ");
+        return;
     }
-
+    
+    if(!confirm(`ຕ້ອງການອັບໂຫຼດ ${bulkData.length} ລາຍການເຂົ້າສູ່ລະບົບແທ້ບໍ່?`)) return;
+    
+    let success = 0;
+    let failed = 0;
+    let errors = [];
+    
+    for(const item of bulkData) {
+        try {
+            // Clean and validate data
+            const cleanItem = {
+                part_id: String(item.part_id).trim(),
+                part_name: String(item.part_name).trim(),
+                stock_quantity: parseInt(item.stock_quantity) || 0,
+                unit_price: parseFloat(item.unit_price) || 0
+            };
+            
+            // Add reorder_point only if the column exists (check first)
+            // For now, we'll skip it to avoid 400 error
+            if(item.reorder_point && !isNaN(parseInt(item.reorder_point))) {
+                cleanItem.reorder_point = parseInt(item.reorder_point);
+            }
+            
+            // Check if part already exists
+            const { data: existing } = await _s.from('inventory')
+                .select('part_id')
+                .eq('part_id', cleanItem.part_id)
+                .maybeSingle();
+            
+            let result;
+            if(existing) {
+                // Update existing
+                result = await _s.from('inventory')
+                    .update(cleanItem)
+                    .eq('part_id', cleanItem.part_id);
+            } else {
+                // Insert new
+                result = await _s.from('inventory')
+                    .insert([cleanItem]);
+            }
+            
+            if(result.error) {
+                failed++;
+                errors.push(`${cleanItem.part_id}: ${result.error.message}`);
+                console.error("Failed:", cleanItem.part_id, result.error);
+            } else {
+                success++;
+                // Log the transaction
+                try {
+                    await logTransaction(
+                        cleanItem.part_id, 
+                        cleanItem.part_name, 
+                        cleanItem.stock_quantity, 
+                        'RECEIVE', 
+                        0, 
+                        cleanItem.stock_quantity
+                    );
+                } catch(logErr) {
+                    console.warn("Log error:", logErr);
+                }
+            }
+        } catch(err) {
+            failed++;
+            errors.push(`${item.part_id}: ${err.message}`);
+            console.error("Error:", item.part_id, err);
+        }
+    }
+    
+    let message = `✅ ອັບໂຫຼດສຳເລັດ ${success} ລາຍການ\n❌ ຜິດພາດ ${failed} ລາຍການ`;
+    if(errors.length > 0 && errors.length <= 5) {
+        message += `\n\nລາຍລະອຽດຜິດພາດ:\n${errors.join('\n')}`;
+    } else if(errors.length > 5) {
+        message += `\n\nມີຂໍ້ຜິດພາດ ${errors.length} ລາຍການ (ກວດເບິ່ງ Console ສຳລັບລາຍລະອຽດ)`;
+    }
+    
+    alert(message);
+    closeBulkModal();
+    loadInventory();
+}
     // ============ CRUD FUNCTIONS ============
     function openModal() {
         isEditing = false;

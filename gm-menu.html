@@ -15,7 +15,6 @@
         .stat-badge { position:absolute; top:15px; right:15px; background:#e74c3c; color:white; 
                       padding:4px 10px; border-radius:20px; font-size:11px; font-weight:bold; display:none; }
         .badge-green { background:#27ae60; }
-        .badge-orange { background:#f39c12; }
         .logout-btn { position:absolute; top:10px; right:10px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.3); color:white; padding:5px 12px; border-radius:5px; cursor:pointer; font-size:12px; }
     </style>
 </head><body>
@@ -27,24 +26,16 @@
 </div>
 
 <div class="menu-grid">
-    <!-- Card 1: Inventory Manager (with Low Stock Alert) -->
+    <!-- Card 1: Inventory Manager (ALL features inside: Fast Movers, ROP, Transaction Log) -->
     <a href="inventory-manager.html" class="menu-card" style="border-color:#27ae60">
         <span id="low-stock-alert" class="stat-badge">0 ເຫຼືອໜ້ອຍ</span>
         <span class="card-icon">📦</span>
         <span class="card-title">ຈັດການສິນຄ້າຄັງ</span>
-        <p class="card-desc">ຈັດການສິນຄ້າ, ຕື່ມສະຕ໋ອກ, ຕັ້ງຄ່າຈຸດສັ່ງຊື້</p>
+        <p class="card-desc">ຈັດການສິນຄ້າ, ຕື່ມສະຕ໋ອກ, ຕັ້ງຄ່າຈຸດສັ່ງຊື້, ເບິ່ງອາໄຫຼ່ໃຊ້ຫຼາຍທີ່ສຸດ ແລະ ປະຫວັດການເຄື່ອນໄຫວ</p>
         <p class="card-desc">ມູນຄ່າລວມ: <b id="total-inv-value">$0</b></p>
     </a>
 
-    <!-- Card 2: Fast Movers Dashboard (NEW) -->
-    <a href="inventory-manager.html?tab=fastmovers" class="menu-card" style="border-color:#f39c12">
-        <span id="reorder-alert" class="stat-badge badge-orange">0 ຕ້ອງສັ່ງ</span>
-        <span class="card-icon">🏆</span>
-        <span class="card-title">ອາໄຫຼ່ໃຊ້ຫຼາຍທີ່ສຸດ</span>
-        <p class="card-desc">ອາໄຫຼ່ທີ່ມີການນຳໃຊ້ສູງສຸດ ແລະ ສິນຄ້າທີ່ຕ້ອງສັ່ງດ່ວນ</p>
-    </a>
-
-    <!-- Card 3: Live Workshop View -->
+    <!-- Card 2: Live Workshop View -->
     <a href="gm-live-view.html" class="menu-card" style="border-color:#f1c40f">
         <span id="active-jobs-alert" class="stat-badge badge-green">0 ກຳລັງດຳເນີນ</span>
         <span class="card-icon">🚕</span>
@@ -52,21 +43,21 @@
         <p class="card-desc">ເບິ່ງສະຖານະລົດທຸກຄັນໃນອູ່ຊ່ອມ</p>
     </a>
 
-    <!-- Card 4: Staff Management -->
+    <!-- Card 3: Staff Management -->
     <a href="staff-management.html" class="menu-card" style="border-color:#2980b9">
         <span class="card-icon">👥</span>
         <span class="card-title">ຈັດການພະນັກງານ</span>
         <p class="card-desc">ຄຸ້ມຄອງສິດເຂົ້າໃຊ້ຂອງຊ່າງ 6 ຄົນ ແລະ ທີມ PDI 4 ຄົນ</p>
     </a>
 
-    <!-- Card 5: Profit & Loss Report -->
+    <!-- Card 4: Profit & Loss Report -->
     <a href="profit-loss.html" class="menu-card" style="border-color:#e74c3c">
         <span class="card-icon">📊</span>
         <span class="card-title">ລາຍງານກຳໄລ-ຂາດທຶນ</span>
         <p class="card-desc">ວິເຄາະລາຍຮັບ ຄ່າໃຊ້ຈ່າຍ ແລະ ກຳໄລສຸດທິ</p>
     </a>
 
-    <!-- Card 6: Revenue Report -->
+    <!-- Card 5: Revenue Report -->
     <a href="revenue-report.html" class="menu-card" style="border-color:#3498db">
         <span class="card-icon">💰</span>
         <span class="card-title">ລາຍງານລາຍຮັບ</span>
@@ -84,27 +75,18 @@
     document.getElementById('gm-name-display').innerText = localStorage.getItem('lsm_user_name');
 
     async function loadLiveStats() {
-        // Inventory stats
         const { data: inv } = await _s.from('inventory').select('stock_quantity, unit_price, reorder_point');
         if(inv) {
             const lowItems = inv.filter(i => i.stock_quantity < 5).length;
-            const reorderItems = inv.filter(i => i.stock_quantity <= (i.reorder_point || 5)).length;
             const totalVal = inv.reduce((acc, curr) => acc + (curr.stock_quantity * curr.unit_price), 0);
             
             if(lowItems > 0) {
                 document.getElementById('low-stock-alert').innerText = lowItems + " ເຫຼືອໜ້ອຍ";
                 document.getElementById('low-stock-alert').style.display = 'block';
             }
-            
-            if(reorderItems > 0) {
-                document.getElementById('reorder-alert').innerText = reorderItems + " ຕ້ອງສັ່ງ";
-                document.getElementById('reorder-alert').style.display = 'block';
-            }
-            
             document.getElementById('total-inv-value').innerText = "$" + totalVal.toLocaleString();
         }
 
-        // Active jobs count
         const { count: jobCount } = await _s.from('job_cards')
             .select('*', { count: 'exact', head: true }).eq('current_status', 'IN_REPAIR');
         

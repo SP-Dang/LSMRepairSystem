@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Download Inventory Template</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <style>
+        body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;padding:40px;text-align:center}
+        .container{max-width:600px;margin:0 auto;background:white;padding:40px;border-radius:15px;box-shadow:0 4px 15px rgba(0,0,0,0.1)}
+        button{background:#27ae60;color:white;border:none;padding:15px 30px;border-radius:8px;font-size:16px;cursor:pointer;margin:10px}
+        button:hover{background:#219a52}
+        pre{background:#f5f5f5;padding:15px;border-radius:8px;text-align:left;overflow-x:auto;font-size:12px}
+        .note{color:#888;font-size:12px;margin-top:20px}
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📦 ດາວໂຫຼດແມ່ແບບອັບໂຫຼດສິນຄ້າ</h1>
+    <p>ຄລິກປຸ່ມລຸ່ມນີ້ເພື່ອດາວໂຫຼດໄຟລ໌ Excel ສຳລັບອັບໂຫຼດຂໍ້ມູນຫຼາຍລາຍການ</p>
+    
+    <button onclick="downloadTemplate()">📥 ດາວໂຫຼດ Template Excel</button>
+    <button onclick="downloadSample()">📥 ດາວໂຫຼດ ຕົວຢ່າງຂໍ້ມູນ</button>
+    
+    <div class="note">
+        <p><strong>📝 ຄຳແນະນຳ:</strong></p>
+        <ul style="text-align:left">
+            <li>ຖັນທີ 1: <strong>part_id</strong> - ລະຫັດອາໄຫຼ່ (ຕ້ອງບໍ່ຊໍ້າກັນ)</li>
+            <li>ຖັນທີ 2: <strong>part_name</strong> - ຊື່ອາໄຫຼ່</li>
+            <li>ຖັນທີ 3: <strong>stock_quantity</strong> - ຈຳນວນໃນຄັງ</li>
+            <li>ຖັນທີ 4: <strong>unit_price</strong> - ລາຄາຕໍ່ໜ່ວຍ (USD)</li>
+            <li>ຖັນທີ 5: <strong>reorder_point</strong> - ຈຸດທີ່ຕ້ອງສັ່ງຊື້ (ທາງເລືອກ, ຖ້າບໍ່ມີຈະໃຊ້ 5)</li>
+        </ul>
+        <p>💡 <strong>ຄຳແນະນຳເພີ່ມເຕີມ:</strong> ສາມາດເພີ່ມລາຍການໄດ້ຫຼາຍເທົ່າທີ່ຕ້ອງການ ໂດຍການເພີ່ມແຖວລຸ່ມລົງໄປ</p>
+    </div>
+</div>
+
+<script>
+    function downloadTemplate() {
+        // Empty template with headers only
+        const data = [
+            ['part_id', 'part_name', 'stock_quantity', 'unit_price', 'reorder_point'],
+            ['', '', '', '', ''],
+            ['', '', '', '', ''],
+            ['', '', '', '', ''],
+            ['', '', '', '', ''],
+            ['', '', '', '', ''],
+            ['', '', '', '', ''],
+            ['', '', '', '', ''],
+            ['', '', '', '', ''],
+            ['', '', '', '', ''],
+            ['', '', '', '', '']
+        ];
+        
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Inventory_Template');
+        
+        // Set column widths
+        ws['!cols'] = [{wch:15}, {wch:30}, {wch:15}, {wch:12}, {wch:15}];
+        
+        XLSX.writeFile(wb, 'inventory_upload_template.xlsx');
+    }
+    
+    function downloadSample() {
+        // Sample data with example products
+        const data = [
+            ['part_id', 'part_name', 'stock_quantity', 'unit_price', 'reorder_point'],
+            ['1001', 'Brake Pad Set (Front)', '50', '25', '10'],
+            ['1002', 'E-Tuk Tire 4.00-8', '30', '45', '8'],
+            ['1003', '12V Control Relay', '100', '15', '20'],
+            ['1004', 'Bearing', '25', '20', '5'],
+            ['1005', 'Tire', '40', '15', '8'],
+            ['1006', 'Light bulb', '80', '2', '15'],
+            ['1007', 'Rear Mirror', '15', '20', '3'],
+            ['1008', 'Shock absorber', '12', '35', '5'],
+            ['1009', 'Air Filter', '20', '12', '6'],
+            ['1010', 'Oil Filter', '35', '8', '10'],
+            ['1011', 'Spark Plug', '60', '3', '15'],
+            ['1012', 'Battery 12V', '10', '85', '3'],
+            ['1013', 'Drive Belt', '18', '22', '5'],
+            ['1014', 'Headlight Assembly', '8', '45', '2'],
+            ['1015', 'Turn Signal', '25', '12', '5']
+        ];
+        
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Sample_Inventory');
+        
+        // Set column widths
+        ws['!cols'] = [{wch:15}, {wch:30}, {wch:15}, {wch:12}, {wch:15}];
+        
+        XLSX.writeFile(wb, 'inventory_sample_data.xlsx');
+    }
+</script>
+</body>
+</html>
